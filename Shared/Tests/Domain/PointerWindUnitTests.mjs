@@ -233,6 +233,17 @@ test('vortex_whenSpunLonger_growsFurther', () => {
   assert.ok(growths[0] < growths[1], `growth after a short spin ${growths[0]}, after a long one ${growths[1]}`);
 });
 
+test('vortex_whenAMouseCirclesWithoutAButton_spinsAsStronglyAsAPressedPointerBlows', () => {
+  const pointerWind = new PointerWind();
+  pointerWind.pointerPressed({ id: 7, kind: POINTER_KINDS.touch, u: 0.9, v: 0.9, timeSeconds: 0 });
+  const [pressedSource] = sourcesAt(pointerWind, 0);
+
+  const endSeconds = circle(pointerWind, { id: 1, kind: POINTER_KINDS.mouse, turns: TURNS_TO_START_A_VORTEX + 0.5, direction: 1 });
+
+  const [hoveringVortex] = pointerWind.vortices({ nowSeconds: endSeconds, strength: 1 });
+  assert.ok(hoveringVortex.strength >= pressedSource.strength, `vortex without a button ${hoveringVortex.strength}, pressed pointer wind ${pressedSource.strength}`);
+});
+
 test('pointerKind_whenTheBrowserReportsAnUnknownKind_failsNamingIt', () => {
   assert.throws(() => pointerKind('stylus'), (error) => error instanceof UnknownPointerKind && error.rawKind === 'stylus');
 });

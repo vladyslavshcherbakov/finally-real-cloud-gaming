@@ -21,6 +21,7 @@ const VORTEX_SECONDS_TO_FULL_GROWTH = 4;
 const VORTEX_LEAN_SECONDS_OF_DRIFT = 1.5;
 const LONGEST_VORTEX_LEAN_IN_RADII = 2;
 const POINTER_WIND_SHARE_WHILE_SPINNING_A_VORTEX = 0.25;
+const PRESSED_VORTEX_SHARE_OF_STRENGTH = 1.5;
 
 export class UnknownPointerKind extends Error {
   constructor(rawKind) {
@@ -156,7 +157,7 @@ export class PointerWind {
         v: drawnCircle.v,
         radius: drawnCircle.radius,
         spin: drawnCircle.spin,
-        strengthShare: strengthShareInPhase(pointer.phase),
+        strengthShare: vortexStrengthShareInPhase(pointer.phase),
         growth: Math.min(1, (nowSeconds - vortexState.startedAtSeconds) / VORTEX_SECONDS_TO_FULL_GROWTH),
         ...vortexLean(drawnCircle),
       });
@@ -213,6 +214,18 @@ function vortexLean(drawnCircle) {
   const leanV = drawnCircle.driftV * VORTEX_LEAN_SECONDS_OF_DRIFT;
   const shortening = Math.min(1, (LONGEST_VORTEX_LEAN_IN_RADII * drawnCircle.radius) / Math.max(Math.hypot(leanU, leanV), 1e-9));
   return { leanU: leanU * shortening, leanV: leanV * shortening };
+}
+
+function vortexStrengthShareInPhase(phase) {
+  switch (phase.name) {
+    case 'hovering':
+      return 1;
+    case 'pressed':
+    case 'puffing':
+      return PRESSED_VORTEX_SHARE_OF_STRENGTH;
+    case 'gone':
+      return 0;
+  }
 }
 
 function fadeShare(vortexState, nowSeconds) {
