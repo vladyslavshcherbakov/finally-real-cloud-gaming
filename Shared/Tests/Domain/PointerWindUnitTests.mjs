@@ -16,6 +16,18 @@ test('wind_whenAMouseMovesWithoutAButton_blowsAlongTheMove', () => {
   assert.deepEqual([source.u, source.velocityU, source.velocityV, source.outwardStrength], [0.75, 1, 0, 0]);
 });
 
+test('wind_whenAMouseOnlyHovers_blowsWeakerThanWithTheButtonPressed', () => {
+  const pointerWind = new PointerWind();
+  pointerWind.pointerMoved({ id: 1, kind: POINTER_KINDS.mouse, u: 0.5, v: 0.5, timeSeconds: 0 });
+  const [hoveringSource] = sourcesAt(pointerWind, 0);
+
+  pointerWind.pointerPressed({ id: 1, kind: POINTER_KINDS.mouse, u: 0.5, v: 0.5, timeSeconds: 0 });
+
+  const [pressedSource] = sourcesAt(pointerWind, 0);
+  assert.ok(hoveringSource.strength < pressedSource.strength,
+    `strength while hovering ${hoveringSource.strength}, with the button pressed ${pressedSource.strength}`);
+});
+
 test('wind_whenAFingerIsHeld_blowsOutwardAtFullStrengthAtOnce', () => {
   const pointerWind = new PointerWind();
 

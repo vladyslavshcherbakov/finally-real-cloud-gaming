@@ -12,6 +12,7 @@ const VELOCITY_DECAY_PER_SECOND = 12;
 const STILL_AFTER_SECONDS = 0.04;
 const SHORTEST_MOVE_SECONDS = 1 / 240;
 const PUFF_AFTER_RELEASE_SECONDS = 0.5;
+const HOVERING_SHARE_OF_STRENGTH = 1 / 3;
 
 export class UnknownPointerKind extends Error {
   constructor(rawKind) {
@@ -92,7 +93,7 @@ export class PointerWind {
         velocityU: clampedPointerSpeed(pointer.velocityU),
         velocityV: clampedPointerSpeed(pointer.velocityV),
         radius,
-        strength,
+        strength: strength * strengthShareInPhase(pointer.phase),
         outwardStrength: outwardStrengthInPhase(pointer.phase, nowSeconds),
       }));
     }
@@ -125,6 +126,18 @@ function nextPhase(pointer, event) {
 
 function blowsInPhase(pointer) {
   return pointer.phase !== HOVERING || pointer.kind.blowsWhileHovering;
+}
+
+function strengthShareInPhase(phase) {
+  switch (phase.name) {
+    case 'hovering':
+      return HOVERING_SHARE_OF_STRENGTH;
+    case 'pressed':
+    case 'puffing':
+      return 1;
+    case 'gone':
+      return 0;
+  }
 }
 
 function outwardStrengthInPhase(phase, nowSeconds) {
