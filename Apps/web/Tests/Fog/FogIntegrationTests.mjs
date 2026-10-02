@@ -6,7 +6,7 @@ import { DEBUG_VIEWS } from '../../../../Shared/Domain/Entities/Settings.js';
 
 const WHOLE_FRAME = { left: 0, right: 1, top: 0, bottom: 1 };
 const SWEEP_BAND = { left: 0.3, right: 0.7, top: 0.55, bottom: 0.65 };
-const SWEEP = { fromX: 60, toX: 260, y: 120, moves: 20, framesPerMove: 2, passes: 3 };
+const SWEEP = { fromX: 60, toX: 260, y: 120, moves: 20, framesPerMove: 1, passes: 3 };
 
 let harness;
 
@@ -49,11 +49,11 @@ test('fog_afterTheWindStops_staysOffTheClearedPath', async () => {
   await environment.page.mouse.move(-1, -1);
   const differenceRightAfterTheSweep = await environment.differenceFromPhoto(SWEEP_BAND);
 
-  await environment.advance(240);
+  await environment.advanceSeconds(2);
 
   const differenceAfterWaiting = await environment.differenceFromPhoto(SWEEP_BAND);
   assert.ok(differenceAfterWaiting < differenceRightAfterTheSweep * 1.03,
-    `difference along the path: right after the sweep ${differenceRightAfterTheSweep}, four seconds later ${differenceAfterWaiting}`);
+    `difference along the path: right after the sweep ${differenceRightAfterTheSweep}, two seconds later ${differenceAfterWaiting}`);
   await environment.close();
 });
 
@@ -64,11 +64,11 @@ test('fog_withAReturnSpeed_closesTheClearedPathAfterTheWindStops', async () => {
   await environment.sweepMouse(SWEEP);
   await environment.page.mouse.move(-1, -1);
 
-  await environment.advance(240);
+  await environment.advanceSeconds(2);
 
   const differenceAfterWaiting = await environment.differenceFromPhoto(SWEEP_BAND);
   assert.ok(differenceAfterWaiting > differenceBeforeTheSweep * 0.85,
-    `difference along the path: before the sweep ${differenceBeforeTheSweep}, four seconds after it ${differenceAfterWaiting}`);
+    `difference along the path: before the sweep ${differenceBeforeTheSweep}, two seconds after it ${differenceAfterWaiting}`);
   await environment.close();
 });
 

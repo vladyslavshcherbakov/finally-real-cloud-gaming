@@ -66,6 +66,10 @@ export class EnvironmentPage {
     await this.page.evaluate((count) => window.environment.advance(count), frameCount);
   }
 
+  async advanceSeconds(seconds) {
+    await this.page.evaluate((secondsToAdvance) => window.environment.advanceSeconds(secondsToAdvance), seconds);
+  }
+
   async changeSetting(key, value) {
     await this.page.evaluate(([settingKey, settingValue]) => window.environment.changeSetting(settingKey, settingValue), [key, value]);
   }
