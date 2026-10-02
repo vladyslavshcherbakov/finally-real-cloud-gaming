@@ -25,15 +25,15 @@ fn main(@builtin(global_invocation_id) column: vec3u) {
   var columnOpticalDepth = 0.0;
   for (var slice = 0u; slice < sliceCount; slice++) { columnOpticalDepth += opticalDepthInSlice(column.xy, slice, surfaceMetres, extinctionPerBaseFog); }
   let clearingSpeedUp = max(1.0, columnOpticalDepth / COLUMN_OPTICAL_DEPTH_CLEARED_AT_THE_PLAIN_RATE);
-  let slicesPerLayer = params.gridDepth / DEPTH_LAYERS;
-  var foggySlicesInFront = 0.0;
+  let layerMetres = params.farSliceMetres / DEPTH_LAYERS;
+  var foggyMetresInFront = 0.0;
   for (var slice = 0u; slice < sliceCount; slice++) {
-    let fogLeftHere = shareOfOpeningFogLeft(column.xy, slice, surfaceMetres);
-    let foggyLayersInFront = (foggySlicesInFront + 0.5 * fogLeftHere) / slicesPerLayer;
+    let foggyMetresHere = shareOfOpeningFogLeft(column.xy, slice, surfaceMetres) * sliceMetresInFrontOfSurface(slice, surfaceMetres);
+    let foggyLayersInFront = (foggyMetresInFront + 0.5 * foggyMetresHere) / layerMetres;
     let inFrontOfSurface = 1.0 - smoothstep(surfaceMetres * 0.9, surfaceMetres * WIND_REACH_BEYOND_THE_SURFACE, sliceDepthMetres(f32(slice) + 0.5));
     let fogCanLiveHere = select(0.0, 1.0, sliceDepthMetres(f32(slice)) < surfaceMetres);
     let reach = exp(-SHIELDING_PER_FOGGY_LAYER * foggyLayersInFront) * inFrontOfSurface;
     textureStore(windReachOut, vec3u(column.xy, slice), vec4f(reach, clearingSpeedUp, fogCanLiveHere, openingPerMeanBaseFog));
-    foggySlicesInFront += fogLeftHere;
+    foggyMetresInFront += foggyMetresHere;
   }
 }
