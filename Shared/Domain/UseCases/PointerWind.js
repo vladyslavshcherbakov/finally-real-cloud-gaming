@@ -21,6 +21,18 @@ export class UnknownPointerKind extends Error {
   }
 }
 
+export class UnknownPointerEvent extends Error {
+  constructor(eventName) {
+    super(`unknown pointer event ${JSON.stringify(eventName)}`);
+    this.name = 'UnknownPointerEvent';
+    this.eventName = eventName;
+  }
+}
+
+const HOVERING = Object.freeze({ name: 'hovering' });
+const PRESSED = Object.freeze({ name: 'pressed' });
+const GONE = Object.freeze({ name: 'gone' });
+
 export function pointerKind(rawKind) {
   if (!(rawKind in POINTER_KINDS)) throw new UnknownPointerKind(rawKind);
   return POINTER_KINDS[rawKind];
@@ -31,8 +43,7 @@ export class PointerWind {
 
   pointerPressed({ id, kind, u, v, timeSeconds }) {
     const pointer = this.#trackedPointer({ id, kind, u, v, timeSeconds });
-    pointer.isPressed = true;
-    pointer.releasedAtSeconds = null;
+    pointer.phase = nextPhase(pointer, { name: 'pressed' });
   }
 
   pointerMoved({ id, kind, u, v, timeSeconds }) {
@@ -49,8 +60,7 @@ export class PointerWind {
   pointerReleased({ id, timeSeconds }) {
     const pointer = this.#pointersById.get(id);
     if (!pointer) return;
-    pointer.isPressed = false;
-    pointer.releasedAtSeconds = timeSeconds;
+    pointer.phase = nextPhase(pointer, { name: 'released', timeSeconds });
   }
 
   pointerCancelled({ id }) {
@@ -59,7 +69,7 @@ export class PointerWind {
 
   pointerLeft({ id }) {
     const pointer = this.#pointersById.get(id);
-    if (pointer && !pointer.isPressed) this.#pointersById.delete(id);
+    if (pointer && pointer.phase !== PRESSED) this.#pointersById.delete(id);
   }
 
   windSources({ nowSeconds, realSeconds, strength, radius }) {
@@ -70,12 +80,12 @@ export class PointerWind {
         pointer.velocityU *= decay;
         pointer.velocityV *= decay;
       }
-      const outwardStrength = pointer.isPressed ? 1 : puffAfterRelease(pointer.releasedAtSeconds, nowSeconds);
-      if (outwardStrength === 0 && !pointer.isPressed && !pointer.kind.staysAfterRelease) {
+      pointer.phase = nextPhase(pointer, { name: 'clockTicked', nowSeconds });
+      if (pointer.phase === GONE) {
         this.#pointersById.delete(id);
         continue;
       }
-      if (outwardStrength === 0 && !pointer.kind.blowsWhileHovering) continue;
+      if (!blowsInPhase(pointer)) continue;
       sources.push(new WindSource({
         u: pointer.u,
         v: pointer.v,
@@ -83,7 +93,7 @@ export class PointerWind {
         velocityV: clampedPointerSpeed(pointer.velocityV),
         radius,
         strength,
-        outwardStrength,
+        outwardStrength: outwardStrengthInPhase(pointer.phase, nowSeconds),
       }));
     }
     return sources;
@@ -92,16 +102,35 @@ export class PointerWind {
   #trackedPointer({ id, kind, u, v, timeSeconds }) {
     let pointer = this.#pointersById.get(id);
     if (!pointer) {
-      pointer = { kind, u, v, velocityU: 0, velocityV: 0, isPressed: false, releasedAtSeconds: null, lastMoveSeconds: timeSeconds };
+      pointer = { kind, u, v, velocityU: 0, velocityV: 0, phase: HOVERING, lastMoveSeconds: timeSeconds };
       this.#pointersById.set(id, pointer);
     }
     return pointer;
   }
 }
 
-function puffAfterRelease(releasedAtSeconds, nowSeconds) {
-  if (releasedAtSeconds === null || releasedAtSeconds === undefined) return 0;
-  return Math.min(1, Math.max(0, 1 - (nowSeconds - releasedAtSeconds) / PUFF_AFTER_RELEASE_SECONDS));
+function nextPhase(pointer, event) {
+  switch (event.name) {
+    case 'pressed':
+      return PRESSED;
+    case 'released':
+      return Object.freeze({ name: 'puffing', releasedAtSeconds: event.timeSeconds });
+    case 'clockTicked':
+      if (pointer.phase.name !== 'puffing' || event.nowSeconds - pointer.phase.releasedAtSeconds < PUFF_AFTER_RELEASE_SECONDS) return pointer.phase;
+      return pointer.kind.staysAfterRelease ? HOVERING : GONE;
+    default:
+      throw new UnknownPointerEvent(event.name);
+  }
+}
+
+function blowsInPhase(pointer) {
+  return pointer.phase !== HOVERING || pointer.kind.blowsWhileHovering;
+}
+
+function outwardStrengthInPhase(phase, nowSeconds) {
+  if (phase === PRESSED) return 1;
+  if (phase.name !== 'puffing') return 0;
+  return Math.min(1, Math.max(0, 1 - (nowSeconds - phase.releasedAtSeconds) / PUFF_AFTER_RELEASE_SECONDS));
 }
 
 function clampedPointerSpeed(uvPerSecond) {
