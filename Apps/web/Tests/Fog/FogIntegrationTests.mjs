@@ -58,7 +58,7 @@ test('everySolver_whenTheWindBlows_runsWithoutGpuErrors', async () => {
 
   for (const solverId of SOLVER_IDS) {
     await environment.changeSetting('solver', solverId);
-    await environment.sweepMouse({ ...SWEEP, moves: 4, framesPerMove: 1, passes: 1 });
+    await environment.dragMouse({ ...SWEEP, moves: 4, framesPerMove: 1, passes: 1 });
     problemsBySolver[solverId] = await environment.problems();
   }
 
@@ -68,7 +68,7 @@ test('everySolver_whenTheWindBlows_runsWithoutGpuErrors', async () => {
 
 test('everyDebugView_showsAPictureOfItsOwn', async () => {
   const environment = await harness.openEnvironment();
-  await environment.sweepMouse({ ...SWEEP, moves: 4, framesPerMove: 1, passes: 1 });
+  await environment.dragMouse({ ...SWEEP, moves: 4, framesPerMove: 1, passes: 1 });
 
   const fingerprints = await environment.viewFingerprints(DEBUG_VIEWS);
 

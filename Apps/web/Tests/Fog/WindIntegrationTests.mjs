@@ -20,7 +20,7 @@ test('fog_whenTheWindSweepsAcross_showsMoreOfThePhotoAlongThePath', async () => 
   await environment.advance(3);
   const differenceBeforeTheSweep = await environment.differenceFromPhoto(SWEEP_BAND);
 
-  await environment.sweepMouse(SWEEP);
+  await environment.dragMouse(SWEEP);
 
   const differenceAfterTheSweep = await environment.differenceFromPhoto(SWEEP_BAND);
   assert.ok(differenceAfterTheSweep < differenceBeforeTheSweep * 0.97,
@@ -31,7 +31,7 @@ test('fog_whenTheWindSweepsAcross_showsMoreOfThePhotoAlongThePath', async () => 
 test('fog_afterTheWindStops_staysOffTheClearedPath', async () => {
   const environment = await harness.openEnvironment({ turbulence: 0, damping: 2, diffusion: 0, fogThickness: 2 });
   await environment.advance(3);
-  await environment.sweepMouse(SWEEP);
+  await environment.dragMouse(SWEEP);
   await environment.page.mouse.move(-1, -1);
   const differenceRightAfterTheSweep = await environment.differenceFromPhoto(SWEEP_BAND);
 
@@ -46,7 +46,7 @@ test('fog_afterTheWindStops_staysOffTheClearedPath', async () => {
 test('fog_withAReturnSpeed_closesTheClearedPathAfterTheWindStops', async () => {
   const environment = await harness.openEnvironment({ returnRate: 0.5, fogThickness: 2 });
   await environment.advance(3);
-  await environment.sweepMouse(SWEEP);
+  await environment.dragMouse(SWEEP);
   await environment.page.mouse.move(-1, -1);
   const differenceRightAfterTheSweep = await environment.differenceFromPhoto(SWEEP_BAND);
 

@@ -96,8 +96,9 @@ export class EnvironmentPage {
     await this.page.evaluate(() => window.environment.showNextScene());
   }
 
-  async sweepMouse({ fromX, toX, y, moves, framesPerMove, passes = 1 }) {
+  async dragMouse({ fromX, toX, y, moves, framesPerMove, passes = 1 }) {
     await this.page.mouse.move(fromX, y);
+    await this.page.mouse.down();
     for (let pass = 0; pass < passes; pass++) {
       const [startX, endX] = pass % 2 === 0 ? [fromX, toX] : [toX, fromX];
       for (let move = 1; move <= moves; move++) {
@@ -105,6 +106,7 @@ export class EnvironmentPage {
         await this.advance(framesPerMove);
       }
     }
+    await this.page.mouse.up();
   }
 
   async differenceFromPhoto(region) {
