@@ -5,7 +5,8 @@
 - While the game loads, the screen says what it prepares: the shaders, the fog noise with its progress, the photo.
 - The scene opens covered by fog that hides it completely. The fog is denser near the ground and has clumps.
 - Every part of the view starts behind the same amount of fog, whether its surface is a near railing or the sky. The "Thickness" setting sets that amount.
-- The fog always moves a little: it swirls. The "Drift" setting adds a steady wind, and it is off by default.
+- The fog always moves a little: it swirls. Fog nearer than 15 m swirls across the screen no faster than fog at 15 m, so the air right in front of the viewer stays calm.
+- The "Drift" setting adds a steady wind, and it is off by default.
 
 ## Wind
 
@@ -27,6 +28,7 @@
 - The fog stops at the surface of the photo, so it lies in front of buildings and hides behind them.
 - Buildings and the ground are solid for the fog.
 - The fog is never brighter than the sky of the scene, so thinned fog does not glare.
+- The fog is lit as one even layer, so its light and shade do not trace the shapes behind it.
 
 ## Settings
 

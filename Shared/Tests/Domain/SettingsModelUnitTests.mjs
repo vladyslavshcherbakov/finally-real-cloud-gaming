@@ -20,7 +20,7 @@ test('setting_whenOutsideItsRange_isRefusedAndKeepsTheOldValue', () => {
   const settings = new SettingsModel(defaultSettings(solverIds), solverIds);
 
   assert.throws(() => settings.change('fogThickness', 99), SettingRefused);
-  assert.equal(settings.values.fogThickness, 8);
+  assert.equal(settings.values.fogThickness, 14);
 });
 
 test('solverSetting_whenTheSolverDoesNotExist_isRefused', () => {

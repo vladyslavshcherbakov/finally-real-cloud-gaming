@@ -20,7 +20,7 @@ class InMemoryStorage {
 test('settings_whenNothingIsStored_areTheDefaults', () => {
   const settings = new SettingsRepository(new InMemoryStorage(), solverIds).load();
 
-  assert.deepEqual([settings.fogThickness, settings.solver, settings.quality], [8, 'stable', 'medium']);
+  assert.deepEqual([settings.fogThickness, settings.solver, settings.quality], [14, 'stable', 'medium']);
 });
 
 test('settings_whenSavedAndLoadedAgain_keepTheChangedValues', () => {

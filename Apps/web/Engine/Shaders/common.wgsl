@@ -49,8 +49,14 @@ fn gridPosition(viewPoint: vec3f) -> vec3f {
   return vec3f(canvasU * params.gridWidth, canvasV * params.gridHeight, sliceAtDepth(depthMetres));
 }
 
-fn depthRelativeToFarSlice(gridZ: f32) -> f32 {
-  return sliceDepthMetres(gridZ) / params.farSliceMetres;
+const NEAREST_FLOW_DEPTH_METRES = 15.0;
+
+fn flowDepthMetres(depthMetres: f32) -> f32 {
+  return max(depthMetres, NEAREST_FLOW_DEPTH_METRES);
+}
+
+fn flowDepthRelativeToFarSlice(gridZ: f32) -> f32 {
+  return flowDepthMetres(sliceDepthMetres(gridZ)) / params.farSliceMetres;
 }
 
 fn pressureAxisWeights() -> vec3f {
@@ -76,6 +82,10 @@ fn heightAboveGround(viewPoint: vec3f) -> f32 { return dot(groundNormal(), viewP
 
 fn photoUv(canvasUv: vec2f) -> vec2f {
   return canvasUv * vec2f(params.photoScaleU, params.photoScaleV) + vec2f(params.photoOffsetU, params.photoOffsetV);
+}
+
+fn fogMetresInFrontOf(surfaceMetres: f32) -> f32 {
+  return clamp(surfaceMetres, params.nearSliceMetres, params.farSliceMetres);
 }
 
 fn depthMetresFromCode(depthCode: f32) -> f32 {

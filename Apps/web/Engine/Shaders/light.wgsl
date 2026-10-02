@@ -3,6 +3,7 @@ const LIGHT_STEP_GROWTH = 1.8;
 const SUN_LIGHT_STEPS = 9;
 const SKY_LIGHT_STEPS = 6;
 const SOLID_EXTINCTION_PER_METRE = 3.0;
+const LIGHT_PATH_THROUGH_OPENING_FOG_METRES = 60.0;
 
 fn opticalDepthToward(start: vec3f, direction: vec3f, steps: i32) -> f32 {
   var opticalDepth = 0.0;
@@ -12,7 +13,7 @@ fn opticalDepthToward(start: vec3f, direction: vec3f, steps: i32) -> f32 {
     let samplePoint = start + direction * (travelledMetres + stepMetres * 0.5);
     let sampleUvw = gridPosition(samplePoint) / gridSize();
     if (sampleUvw.z > 1.0 || samplePoint.z < 0.05) { break; }
-    let fogExtinction = textureSampleLevel(fog, clampSampler, sampleUvw, 0.0).r * textureSampleLevel(windReach, clampSampler, sampleUvw, 0.0).a;
+    let fogExtinction = textureSampleLevel(fog, clampSampler, sampleUvw, 0.0).r * params.openingOpticalDepth / LIGHT_PATH_THROUGH_OPENING_FOG_METRES;
     var solidFraction = 0.0;
     if (all(sampleUvw.xy > vec2f(0.0)) && all(sampleUvw.xy < vec2f(1.0))) {
       solidFraction = textureSampleLevel(solids, clampSampler, sampleUvw, 0.0).r;

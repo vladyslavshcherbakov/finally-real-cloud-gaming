@@ -13,10 +13,10 @@ struct NeighbourPressure {
 fn faceWeight(cell: vec3i, neighbourNumber: i32) -> f32 {
   let axisWeights = pressureAxisWeights();
   if (neighbourNumber < 4) {
-    return axisWeights[neighbourNumber / 2] * depthRelativeToFarSlice(f32(cell.z) + 0.5);
+    return axisWeights[neighbourNumber / 2] * flowDepthRelativeToFarSlice(f32(cell.z) + 0.5);
   }
   let faceZ = f32(cell.z) + select(0.0, 1.0, neighbourNumber == 4);
-  return axisWeights.z * depthRelativeToFarSlice(faceZ) * pow(DEPTH_FACES_MERGED_PER_LEVEL, f32(levelNumber()));
+  return axisWeights.z * flowDepthRelativeToFarSlice(faceZ) * pow(DEPTH_FACES_MERGED_PER_LEVEL, f32(levelNumber()));
 }
 
 fn neighbourPressure(cell: vec3i) -> NeighbourPressure {

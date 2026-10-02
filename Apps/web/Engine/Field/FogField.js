@@ -51,7 +51,7 @@ const FOG_UPDATE_BINDINGS = {
 const FOG_UPDATE_KERNEL = { shader: 'fog_update', bindings: FOG_UPDATE_BINDINGS };
 const LIGHT_KERNEL = {
   shader: 'light',
-  bindings: { fog: 'texture3d', windReach: 'texture3d', solids: 'texture3d', previousLight: 'texture3d', clampSampler: 'sampler', lightOut: VECTOR_OUT },
+  bindings: { fog: 'texture3d', solids: 'texture3d', previousLight: 'texture3d', clampSampler: 'sampler', lightOut: VECTOR_OUT },
 };
 
 export const FOG_FIELD_KERNELS = [
@@ -159,7 +159,7 @@ export class FogField {
 
   computeLight(pass) {
     this.#kernels.kernel(LIGHT_KERNEL).dispatch(pass, {
-      fog: this.fog, windReach: this.windReach, solids: this.solids, previousLight: this.light, clampSampler: this.clampSampler, lightOut: this.lightTextures[1 - this.#lightIndex],
+      fog: this.fog, solids: this.solids, previousLight: this.light, clampSampler: this.clampSampler, lightOut: this.lightTextures[1 - this.#lightIndex],
     }, this.size);
     this.#lightIndex = 1 - this.#lightIndex;
   }

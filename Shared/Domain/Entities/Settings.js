@@ -1,7 +1,7 @@
 import { PRESETS_FROM_LOWEST, DEFAULT_PRESET } from './QualityPreset.js';
 
 export const NUMERIC_SETTINGS = [
-  { key: 'fogThickness', group: 'Fog', label: 'Thickness', defaultValue: 8, min: 1, max: 30, step: 0.5 },
+  { key: 'fogThickness', group: 'Fog', label: 'Thickness', defaultValue: 14, min: 1, max: 30, step: 0.5 },
   { key: 'baseSmog', group: 'Fog', label: 'Base smog', defaultValue: 1.0, min: 0, max: 1.5, step: 0.01 },
   { key: 'clumps', group: 'Fog', label: 'Clumps', defaultValue: 0.9, min: 0, max: 1.5, step: 0.01 },
   { key: 'heightFalloff', group: 'Fog', label: 'Height falloff (m)', defaultValue: 90, min: 2, max: 120, step: 1 },

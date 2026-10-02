@@ -17,7 +17,7 @@ fn main(@builtin(global_invocation_id) cellId: vec3u) {
     pressureAt(cell + vec3i(1, 0, 0), ownPressure) - pressureAt(cell - vec3i(1, 0, 0), ownPressure),
     pressureAt(cell + vec3i(0, 1, 0), ownPressure) - pressureAt(cell - vec3i(0, 1, 0), ownPressure),
     pressureAt(cell + vec3i(0, 0, 1), ownPressure) - pressureAt(cell - vec3i(0, 0, 1), ownPressure)) * 0.5;
-  let relativeDepth = depthRelativeToFarSlice(f32(cell.z) + 0.5);
+  let relativeDepth = flowDepthRelativeToFarSlice(f32(cell.z) + 0.5);
   let velocityCorrection = pressureGradient * pressureAxisWeights() / (relativeDepth * relativeDepth);
   textureStore(velocityOut, cellId, vec4f(textureLoad(velocity, cellId, 0).xyz - velocityCorrection, 0.0));
 }

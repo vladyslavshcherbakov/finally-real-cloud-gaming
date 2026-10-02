@@ -15,7 +15,8 @@ fn main(@builtin(global_invocation_id) column: vec3u) {
   if (any(column.xy >= vec2u(gridSize().xy))) { return; }
   let surfaceMetres = columnSurfaceMetres(column.xy);
   let sliceCount = u32(params.gridDepth);
-  let extinctionPerBaseFog = openingDensityScale(column.xy, surfaceMetres);
+  let openingPerMeanBaseFog = openingOpticalDepthPerMeanBaseFog(column.xy, surfaceMetres);
+  let extinctionPerBaseFog = openingPerMeanBaseFog / fogMetresInFrontOf(surfaceMetres);
   var columnOpticalDepth = 0.0;
   for (var slice = 0u; slice < sliceCount; slice++) { columnOpticalDepth += opticalDepthInSlice(column.xy, slice, surfaceMetres, extinctionPerBaseFog); }
   let shielding = FOG_LAYERS_AGAINST_WIND * min(1.0, columnOpticalDepth / COLUMN_OPTICAL_DEPTH_THAT_SHIELDS_FULLY)
@@ -27,7 +28,7 @@ fn main(@builtin(global_invocation_id) column: vec3u) {
     let shareInFront = select(0.0, (opticalDepthInFront + 0.5 * opticalDepthHere) / columnOpticalDepth, columnOpticalDepth > 0.0);
     let inFrontOfSurface = 1.0 - smoothstep(surfaceMetres * 0.9, surfaceMetres * WIND_REACH_BEYOND_THE_SURFACE, sliceDepthMetres(f32(slice) + 0.5));
     let fogCanLiveHere = select(0.0, 1.0, sliceDepthMetres(f32(slice)) < surfaceMetres);
-    textureStore(windReachOut, vec3u(column.xy, slice), vec4f(exp(-shielding * shareInFront) * inFrontOfSurface, clearingSpeedUp, fogCanLiveHere, extinctionPerBaseFog));
+    textureStore(windReachOut, vec3u(column.xy, slice), vec4f(exp(-shielding * shareInFront) * inFrontOfSurface, clearingSpeedUp, fogCanLiveHere, openingPerMeanBaseFog));
     opticalDepthInFront += opticalDepthHere;
   }
 }

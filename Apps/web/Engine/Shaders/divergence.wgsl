@@ -1,5 +1,5 @@
 fn volumeWeightedVelocity(cell: vec3i, ownVelocity: vec3f) -> vec3f {
-  let depthCubed = pow(depthRelativeToFarSlice(f32(cell.z) + 0.5), 3.0);
+  let depthCubed = pow(flowDepthRelativeToFarSlice(f32(cell.z) + 0.5), 3.0);
   if (!isInsideGrid(cell)) { return ownVelocity * depthCubed; }
   if (textureLoad(solids, cell, 0).r > 0.5) { return vec3f(0.0); }
   return textureLoad(velocity, cell, 0).xyz * depthCubed;
