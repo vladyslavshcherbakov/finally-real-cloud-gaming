@@ -13,6 +13,7 @@
 - A mouse blows while it moves, with or without a button.
 - A pressed mouse button or a finger on the screen also blows outward from that point, and away into the scene.
 - The blow starts faint and grows to full strength over one second of holding.
+- When the wind stops, the air settles back into its slow swirl within a fraction of a second, so it does not carry fog back into the cleared spot.
 - The wind pushes the fog along the move and brings clean air, so the photo shows through.
 - In every part of the view, the wind reaches the air in front of the surface there, up to the sky.
 - The fog nearest the viewer shields the fog behind it from the wind, so the view opens layer by layer.
