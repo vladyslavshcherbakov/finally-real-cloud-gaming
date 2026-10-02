@@ -1,7 +1,7 @@
 import { PRESETS_FROM_LOWEST, DEFAULT_PRESET } from './QualityPreset.js';
 
 export const NUMERIC_SETTINGS = [
-  { key: 'fogThickness', defaultValue: 14, min: 1, max: 30 },
+  { key: 'fogThickness', defaultValue: 20, min: 1, max: 30 },
   { key: 'baseSmog', defaultValue: 1.0, min: 0, max: 1.5 },
   { key: 'clumps', defaultValue: 0.9, min: 0, max: 1.5 },
   { key: 'heightFalloff', defaultValue: 90, min: 2, max: 120 },
