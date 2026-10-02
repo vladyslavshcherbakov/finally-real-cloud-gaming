@@ -51,5 +51,6 @@ The reference solver is `Apps/web/Engine/Solvers/StableFluidsSolver.js`.
 ## Tests
 
 - Unit tests for `Shared/` live in `Shared/Tests/<Layer>/` and use `node:test`.
+- Unit tests of the engine's numerics live in `Apps/web/Tests/Engine/`. They run the engine's kernels on their own in headless Chromium with software WebGPU, without the game.
 - Integration tests live in `Apps/web/Tests/<Feature>/`. They build the app through `AppGraph` in headless Chromium with software WebGPU, and replace only the canvas, the storage, the clock and the random choice.
 - The allowed tool beyond the scripts is Playwright, for the integration tests.

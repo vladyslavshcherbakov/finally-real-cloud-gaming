@@ -46,6 +46,16 @@ export class BrowserHarness {
     return new EnvironmentPage(page, pageErrors);
   }
 
+  async openModulePage() {
+    const page = await this.#browser.newPage();
+    const pageErrors = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message));
+    page.on('console', (message) => { if (message.type() === 'error') pageErrors.push(message.text()); });
+    await page.goto(`http://localhost:${this.#server.address().port}/${ENVIRONMENT_PAGE}`);
+    await page.waitForFunction(() => window.environmentModuleLoaded, null, { timeout: START_TIMEOUT_MILLISECONDS });
+    return { page, pageErrors };
+  }
+
   async stop() {
     await this.#browser.close();
     this.#server.close();

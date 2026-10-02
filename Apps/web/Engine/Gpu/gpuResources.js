@@ -6,7 +6,7 @@ export function createTexture3D(device, label, size, format) {
     size,
     dimension: '3d',
     format,
-    usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST,
+    usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC,
   });
   const [width, height, depth] = size;
   const bytesPerRow = width * BYTES_PER_TEXEL[format];
