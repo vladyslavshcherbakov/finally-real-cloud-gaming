@@ -17,14 +17,16 @@ export class FogScreen {
   #engine;
   #pointerWind;
   #logger;
+  #clock;
   #reportedUnknownKinds = new Set();
 
-  constructor({ canvas, message, engine, pointerWind, logger }) {
+  constructor({ canvas, message, engine, pointerWind, clock, logger }) {
     this.#canvas = canvas;
     this.#message = message;
     this.#engine = engine;
     this.#pointerWind = pointerWind;
     this.#logger = logger;
+    this.#clock = clock;
   }
 
   connect() {
@@ -57,7 +59,7 @@ export class FogScreen {
       kind,
       u: (event.clientX - bounds.left) / bounds.width,
       v: (event.clientY - bounds.top) / bounds.height,
-      timeSeconds: event.timeStamp / 1000,
+      timeSeconds: this.#clock.nowSeconds(),
     });
   }
 

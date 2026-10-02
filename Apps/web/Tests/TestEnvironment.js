@@ -1,11 +1,23 @@
 import { createAppGraph } from '../App/AppGraph.js';
 import { FogScreen } from '../Features/Fog/FogScreen.js';
 import { OffscreenFrameTarget } from './OffscreenFrameTarget.js';
-import { FrameTime } from '../../../Shared/Domain/Entities/FrameTime.js';
+import { FrameTime, LONGEST_SIMULATION_STEP_SECONDS } from '../../../Shared/Domain/Entities/FrameTime.js';
 import { Logger } from '../../../Shared/Logging/Logger.js';
 import { SETTINGS_STORAGE_KEY } from '../../../Shared/Storage/Repositories/SettingsRepository.js';
 
-const FRAME_SECONDS = 1 / 60;
+const FRAME_SECONDS = LONGEST_SIMULATION_STEP_SECONDS;
+
+class SteppedClock {
+  #seconds = 0;
+
+  nowSeconds() {
+    return this.#seconds;
+  }
+
+  advance(seconds) {
+    this.#seconds += seconds;
+  }
+}
 
 class InMemoryStorage {
   #itemsByKey = new Map();
@@ -39,9 +51,11 @@ export class TestEnvironment {
   #graph;
   #frameTarget;
   #device;
+  #clock;
 
-  constructor(graph, frameTarget, device, logSink) {
+  constructor(graph, frameTarget, device, clock, logSink) {
     this.#graph = graph;
+    this.#clock = clock;
     this.#frameTarget = frameTarget;
     this.#device = device;
     this.logSink = logSink;
@@ -52,6 +66,7 @@ export class TestEnvironment {
     storage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ quality: 'low', ...settings }));
     const logSink = new RecordingLogSink();
     const logger = new Logger('test', { sink: logSink });
+    const clock = new SteppedClock();
     let frameTarget = null;
     let device = null;
     const graph = await createAppGraph({
@@ -62,12 +77,12 @@ export class TestEnvironment {
       },
       storage,
       random: () => 0,
-      clock: { nowSeconds: () => performance.now() / 1000 },
+      clock,
       logger,
     });
-    new FogScreen({ canvas, message, engine: graph.engine, pointerWind: graph.pointerWind, logger }).connect();
+    new FogScreen({ canvas, message, engine: graph.engine, pointerWind: graph.pointerWind, clock, logger }).connect();
     await graph.engine.start();
-    return new TestEnvironment(graph, frameTarget, device, logSink);
+    return new TestEnvironment(graph, frameTarget, device, clock, logSink);
   }
 
   get problems() {
@@ -82,8 +97,13 @@ export class TestEnvironment {
     this.#graph.settings.change(key, value);
   }
 
+  async advanceSeconds(seconds) {
+    await this.advance(Math.round(seconds / FRAME_SECONDS));
+  }
+
   async advance(frameCount) {
     for (let frame = 0; frame < frameCount; frame++) {
+      this.#clock.advance(FRAME_SECONDS);
       this.#graph.engine.frameRequested(new FrameTime(FRAME_SECONDS));
       await this.#device.queue.onSubmittedWorkDone();
     }

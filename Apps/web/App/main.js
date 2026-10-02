@@ -25,7 +25,7 @@ async function start() {
       clock: SYSTEM_CLOCK,
       logger,
     });
-    new FogScreen({ canvas, message, engine: graph.engine, pointerWind: graph.pointerWind, logger: logger.forArea('screen') }).connect();
+    new FogScreen({ canvas, message, engine: graph.engine, pointerWind: graph.pointerWind, clock: SYSTEM_CLOCK, logger: logger.forArea('screen') }).connect();
     new SettingsPanel({ settings: graph.settings, engine: graph.engine }).mount(document.body);
     await graph.engine.start();
     new AnimationFrameLoop((frameTime) => graph.engine.frameRequested(frameTime)).start();
