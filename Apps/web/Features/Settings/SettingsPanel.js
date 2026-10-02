@@ -1,4 +1,5 @@
 import { NUMERIC_SETTINGS, QUALITY_CHOICES, DEBUG_VIEWS } from '../../../../Shared/Domain/Entities/Settings.js';
+import { SLIDER_GROUPS } from './SettingSliders.js';
 import { SOLVERS } from '../../Engine/Solvers.js';
 
 const VIEW_LABELS = {
@@ -82,14 +83,14 @@ export class SettingsPanel {
   }
 
   #sliderGroups() {
-    const groups = [...new Set(NUMERIC_SETTINGS.map((spec) => spec.group))];
-    return groups.map((group) => element('details', { open: group === 'Fog' }, [
-      element('summary', { textContent: group }),
-      ...NUMERIC_SETTINGS.filter((spec) => spec.group === group).map((spec) => this.#slider(spec)),
+    return SLIDER_GROUPS.map(({ title, isOpenAtStart, sliders }) => element('details', { open: isOpenAtStart }, [
+      element('summary', { textContent: title }),
+      ...sliders.map((slider) => this.#slider(slider)),
     ]));
   }
 
-  #slider({ key, label, min, max, step }) {
+  #slider({ key, label, step }) {
+    const { min, max } = NUMERIC_SETTINGS.find((setting) => setting.key === key);
     const valueText = element('span', { className: 'value', textContent: String(this.#settings.values[key]) });
     const input = element('input', { id: `setting-${key}`, type: 'range', min, max, step, value: this.#settings.values[key] });
     input.addEventListener('input', () => {

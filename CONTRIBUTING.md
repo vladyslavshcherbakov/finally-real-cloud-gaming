@@ -30,7 +30,8 @@ Add a solver in these steps:
 
 Add a setting in these steps:
 1. Add it to `NUMERIC_SETTINGS` in `Shared/Domain/Entities/Settings.js`.
-2. Write it into the params in `SimulationParams.js` and read it in the shader through `params`.
+2. Add its slider, with its label and step, to `SLIDER_GROUPS` in `Apps/web/Features/Settings/SettingSliders.js`.
+3. Write it into the params in `SimulationParams.js` and read it in the shader through `params`.
 
 The reference solver is `Apps/web/Engine/Solvers/StableFluidsSolver.js`.
 
