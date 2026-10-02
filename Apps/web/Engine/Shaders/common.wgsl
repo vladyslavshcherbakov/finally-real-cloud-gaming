@@ -172,7 +172,7 @@ struct WindEffect {
 const SWEEP_PUSH = 4.0;
 const OUTWARD_PUSH = 15.0;
 const INTO_SCENE_PUSH = 6.0;
-const POINTER_SPEED_FOR_FULL_CLEANING = 0.125;
+const POINTER_SPEED_FOR_FULL_CLEANING = 0.4;
 const WIND_REACH_IN_RADII_SQUARED = 9.0;
 
 fn windEffect(gridPoint: vec3f) -> WindEffect {
