@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SettingsRepository, SettingsStorageUnavailable, SETTINGS_STORAGE_KEY } from '../../Storage/Repositories/SettingsRepository.js';
 import { StoredSettingsCorrupt } from '../../Storage/Mappers/SettingsMapper.js';
+import { defaultSettings } from '../../Domain/Entities/Settings.js';
 
 const solverIds = ['stable', 'flip'];
 
@@ -20,7 +21,7 @@ class InMemoryStorage {
 test('settings_whenNothingIsStored_areTheDefaults', () => {
   const settings = new SettingsRepository(new InMemoryStorage(), solverIds).load();
 
-  assert.deepEqual([settings.fogThickness, settings.solver, settings.quality], [14, 'stable', 'medium']);
+  assert.deepEqual(settings, defaultSettings(solverIds));
 });
 
 test('settings_whenSavedAndLoadedAgain_keepTheChangedValues', () => {

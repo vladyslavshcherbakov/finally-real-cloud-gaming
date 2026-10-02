@@ -18,9 +18,10 @@ test('setting_whenChangedInsideItsRange_reachesEverySubscriber', () => {
 
 test('setting_whenOutsideItsRange_isRefusedAndKeepsTheOldValue', () => {
   const settings = new SettingsModel(defaultSettings(solverIds), solverIds);
+  const thicknessBeforeTheRefusal = settings.values.fogThickness;
 
   assert.throws(() => settings.change('fogThickness', 99), SettingRefused);
-  assert.equal(settings.values.fogThickness, 14);
+  assert.equal(settings.values.fogThickness, thicknessBeforeTheRefusal);
 });
 
 test('solverSetting_whenTheSolverDoesNotExist_isRefused', () => {
