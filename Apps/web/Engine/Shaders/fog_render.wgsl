@@ -11,7 +11,6 @@ const FAINTEST_FOG = 0.002;
 const OPAQUE_TRANSMITTANCE = 0.002;
 const FINE_DETAIL_SCALE = 3.7;
 const SECOND_PHASE_SHIFT = vec3f(0.31, 0.57, 0.11);
-const HAZE_REACH_IN_FOG_DEPTHS = 4.0;
 const LARGEST_PHASE = 2.0;
 const WHOLE_PHOTO_MIP = 16.0;
 const BRIGHTEST_FOG_OVER_SKY = 1.15;
@@ -131,22 +130,9 @@ fn fogAlongRay(ray: ViewRay) -> FogLight {
   return fogLight;
 }
 
-fn withHazeBeyondTheGrid(ray: ViewRay, fogLight: FogLight) -> FogLight {
-  if (ray.surfaceDepthMetres <= params.farSliceMetres || fogLight.transmittance < OPAQUE_TRANSMITTANCE) { return fogLight; }
-  let lastSliceUvw = vec3f(ray.canvasUv, 1.0 - 0.5 / params.gridDepth);
-  let hazeExtinction = textureSampleLevel(fog, clampSampler, lastSliceUvw, 0.0).r * extinctionPerBaseFog(ray, lastSliceUvw) * 0.5;
-  let hazeMetres = min(ray.surfaceDepthMetres, params.farSliceMetres * HAZE_REACH_IN_FOG_DEPTHS) - params.farSliceMetres;
-  let hazeTransmittance = exp(-hazeExtinction * hazeMetres * ray.metresPerDepthMetre);
-  let hazeOpticalDepthToSun = textureSampleLevel(light, clampSampler, lastSliceUvw, 0.0).r;
-  let hazeLight = boundedBySky(sunColor() * params.sunIntensity * ray.phase * sunVisibility(hazeOpticalDepthToSun)
-    + desaturated(mix(groundColor(), skyColor(), 0.8), AMBIENT_DESATURATION) * params.ambientIntensity);
-  return FogLight(fogLight.scattered + fogLight.transmittance * hazeLight * (1.0 - hazeTransmittance),
-    fogLight.transmittance * hazeTransmittance);
-}
-
 @fragment
 fn main(vertex: FullscreenVertex) -> @location(0) vec4f {
   let ray = viewRay(vertex.canvasUv);
-  let fogLight = withHazeBeyondTheGrid(ray, fogAlongRay(ray));
+  let fogLight = fogAlongRay(ray);
   return vec4f(fogLight.scattered, fogLight.transmittance);
 }
