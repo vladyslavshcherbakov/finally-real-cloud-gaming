@@ -4,8 +4,8 @@ const FULL_TURN_RADIANS = 2 * Math.PI;
 const COUNTED_PATH_SECONDS = 6;
 const LAST_TURN_SECONDS = 1;
 const TURNS_IN_THE_LAST_SECOND_WHILE_CIRCLING = 0.5;
-const SLOWEST_CIRCLING_UV_PER_SECOND = 0.25;
-const SHORTEST_COUNTED_MOVE_UV = 0.002;
+const SLOWEST_CIRCLING_UV_PER_SECOND = 0.15;
+const SHORTEST_COUNTED_MOVE_UV = 0.008;
 const SHORTEST_MOVE_SECONDS = 1 / 240;
 const SHARPEST_TURN_PER_MOVE_RADIANS = Math.PI / 2;
 const SMALLEST_CIRCLE_RADIUS = 0.03;
@@ -41,11 +41,12 @@ export class CircleGesture {
     const movedSeconds = Math.max(timeSeconds - this.#lastPoint.timeSeconds, SHORTEST_MOVE_SECONDS);
     const heading = Math.atan2(moveV, moveU);
     const turnRadians = this.#lastHeading === null ? 0 : wrappedAngle(heading - this.#lastHeading);
-    const isCircling = moveLength / movedSeconds >= SLOWEST_CIRCLING_UV_PER_SECOND && Math.abs(turnRadians) <= SHARPEST_TURN_PER_MOVE_RADIANS;
-    if (isCircling) {
-      this.#path.push({ timeSeconds, u, v, turnRadians });
-    } else {
+    const isTooSlowToCircle = moveLength / movedSeconds < SLOWEST_CIRCLING_UV_PER_SECOND;
+    const isSharpTurn = Math.abs(turnRadians) > SHARPEST_TURN_PER_MOVE_RADIANS;
+    if (isTooSlowToCircle) {
       this.#path = [];
+    } else {
+      this.#path.push({ timeSeconds, u, v, turnRadians: isSharpTurn ? 0 : turnRadians });
     }
     this.#lastHeading = heading;
     this.#lastPoint = { u, v, timeSeconds };
