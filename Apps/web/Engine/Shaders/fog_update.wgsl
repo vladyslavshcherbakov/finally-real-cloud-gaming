@@ -19,7 +19,7 @@ fn main(@builtin(global_invocation_id) cellId: vec3u) {
   if (any(cellId >= vec3u(gridSize()))) { return; }
   let motion = cellMotion(cellId);
   let windReachHere = textureLoad(windReach, cellId, 0);
-  let movedAir = movedAirShare(motion, windReachHere);
+  let movedAir = movedAirShare(motion);
   let density = updatedDensity(vec3i(cellId), motion, movedAir, windReachHere);
   let phaseOffsets = updatedDetailPhaseOffsets(motion);
   textureStore(fogOut, cellId, vec4f(max(density, 0.0), phaseOffsets.first));
@@ -32,9 +32,9 @@ fn cellMotion(cellId: vec3u) -> CellMotion {
   return CellMotion(centre, displacement, (centre - displacement) / gridSize());
 }
 
-fn movedAirShare(motion: CellMotion, windReachHere: vec4f) -> f32 {
+fn movedAirShare(motion: CellMotion) -> f32 {
   let carriedMark = textureSampleLevel(flow, clampSampler, motion.departureUvw, 0.0).w * exp(-stepSeconds() / MOVED_AIR_FADE_SECONDS);
-  return max(carriedMark, windEffect(motion.centre).movedAirShare * windReachHere.r);
+  return max(carriedMark, windEffect(motion.centre).movedAirShare);
 }
 
 fn updatedDensity(cell: vec3i, motion: CellMotion, movedAir: f32, windReachHere: vec4f) -> f32 {
