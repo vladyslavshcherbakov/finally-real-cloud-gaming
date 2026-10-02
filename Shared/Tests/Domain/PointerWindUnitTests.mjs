@@ -50,6 +50,18 @@ test('wind_whenTheFingerIsLifted_puffsOutForHalfASecondAndStops', () => {
   assert.deepEqual([...strengths, sourcesAt(pointerWind, 1).length], [1, 0.5, 0]);
 });
 
+test('wind_whenAFingerStopsAfterADrag_doesNotBlowBackward', () => {
+  const pointerWind = new PointerWind();
+  pointerWind.pointerPressed({ id: 7, kind: POINTER_KINDS.touch, u: 0.2, v: 0.5, timeSeconds: 0 });
+  for (let move = 1; move <= 10; move++) pointerWind.pointerMoved({ id: 7, kind: POINTER_KINDS.touch, u: 0.2 + move * 0.04, v: 0.5, timeSeconds: move * 0.02 });
+
+  const [stoppedSource] = sourcesAt(pointerWind, 1);
+  pointerWind.pointerReleased({ id: 7, timeSeconds: 1 });
+
+  const [releasedSource] = sourcesAt(pointerWind, 1);
+  assert.deepEqual([stoppedSource.outwardStrength, releasedSource.outwardStrength], [0, 0]);
+});
+
 test('wind_whenTheSystemCancelsATouch_stops', () => {
   const pointerWind = new PointerWind();
   pointerWind.pointerPressed({ id: 7, kind: POINTER_KINDS.touch, u: 0.2, v: 0.3, timeSeconds: 0 });

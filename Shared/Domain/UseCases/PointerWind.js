@@ -14,6 +14,7 @@ const VELOCITY_DECAY_PER_SECOND = 12;
 const STILL_AFTER_SECONDS = 0.04;
 const SHORTEST_MOVE_SECONDS = 1 / 240;
 const PUFF_AFTER_RELEASE_SECONDS = 0.5;
+const DRAG_UV_THAT_ENDS_A_TAP = 0.05;
 const HOVERING_SHARE_OF_STRENGTH = 1 / 3;
 const VORTEX_FADE_SECONDS = 2;
 
@@ -34,7 +35,6 @@ export class UnknownPointerEvent extends Error {
 }
 
 const HOVERING = Object.freeze({ name: 'hovering' });
-const PRESSED = Object.freeze({ name: 'pressed' });
 const GONE = Object.freeze({ name: 'gone' });
 const SPINNING = Object.freeze({ name: 'spinning' });
 
@@ -56,6 +56,7 @@ export class PointerWind {
     const pointer = this.#trackedPointer({ id, kind, u, v, timeSeconds });
     const movedSeconds = Math.max(timeSeconds - pointer.lastMoveSeconds, SHORTEST_MOVE_SECONDS);
     const smoothing = Math.min(1, movedSeconds * VELOCITY_SMOOTHING_PER_SECOND);
+    pointer.phase = nextPhase(pointer, { name: 'moved', distanceUv: Math.hypot(u - pointer.u, v - pointer.v) });
     pointer.velocityU += ((u - pointer.u) / movedSeconds - pointer.velocityU) * smoothing;
     pointer.velocityV += ((v - pointer.v) / movedSeconds - pointer.velocityV) * smoothing;
     pointer.u = u;
@@ -76,7 +77,7 @@ export class PointerWind {
 
   pointerLeft({ id }) {
     const pointer = this.#pointersById.get(id);
-    if (pointer && pointer.phase !== PRESSED) this.#pointersById.delete(id);
+    if (pointer && pointer.phase.name !== 'pressed') this.#pointersById.delete(id);
   }
 
   windSources({ nowSeconds, realSeconds, strength, radius }) {
@@ -163,9 +164,12 @@ export class PointerWind {
 function nextPhase(pointer, event) {
   switch (event.name) {
     case 'pressed':
-      return PRESSED;
+      return Object.freeze({ name: 'pressed', travelledUv: 0 });
+    case 'moved':
+      if (pointer.phase.name !== 'pressed') return pointer.phase;
+      return Object.freeze({ name: 'pressed', travelledUv: pointer.phase.travelledUv + event.distanceUv });
     case 'released':
-      return Object.freeze({ name: 'puffing', releasedAtSeconds: event.timeSeconds });
+      return Object.freeze({ name: 'puffing', releasedAtSeconds: event.timeSeconds, tapShare: tapShareOf(pointer.phase) });
     case 'clockTicked':
       if (pointer.phase.name !== 'puffing' || event.nowSeconds - pointer.phase.releasedAtSeconds < PUFF_AFTER_RELEASE_SECONDS) return pointer.phase;
       return pointer.kind.staysAfterRelease ? HOVERING : GONE;
@@ -200,9 +204,26 @@ function fadeShare(vortexState, nowSeconds) {
 }
 
 function outwardStrengthInPhase(phase, nowSeconds) {
-  if (phase === PRESSED) return 1;
-  if (phase.name !== 'puffing') return 0;
-  return Math.min(1, Math.max(0, 1 - (nowSeconds - phase.releasedAtSeconds) / PUFF_AFTER_RELEASE_SECONDS));
+  switch (phase.name) {
+    case 'pressed':
+      return tapShareOf(phase);
+    case 'puffing':
+      return phase.tapShare * Math.min(1, Math.max(0, 1 - (nowSeconds - phase.releasedAtSeconds) / PUFF_AFTER_RELEASE_SECONDS));
+    case 'hovering':
+    case 'gone':
+      return 0;
+  }
+}
+
+function tapShareOf(phase) {
+  switch (phase.name) {
+    case 'pressed':
+      return Math.max(0, 1 - phase.travelledUv / DRAG_UV_THAT_ENDS_A_TAP);
+    case 'hovering':
+    case 'puffing':
+    case 'gone':
+      return 0;
+  }
 }
 
 function clampedPointerSpeed(uvPerSecond) {
