@@ -3,7 +3,6 @@ import { NoiseTextures, NOISE_KERNELS } from './Field/NoiseTextures.js';
 import { ENGINE_PHASES } from './EnginePhase.js';
 import { EngineStats } from './EngineStats.js';
 import { SceneTextures } from './Scene/SceneTextures.js';
-import { GpuTimer } from './Gpu/GpuTimer.js';
 import { SOLVERS, solverClass } from './Solvers.js';
 import { QUALITY_PRESETS, gridSize } from '../../../Shared/Domain/Entities/QualityPreset.js';
 import { chooseNextScene } from '../../../Shared/Domain/UseCases/ChooseNextScene.js';
@@ -32,6 +31,7 @@ export class FogEngine {
   #logger;
   #renderer;
   #timer;
+  #clock;
   #noise = null;
   #scene = null;
   #field = null;
@@ -48,7 +48,7 @@ export class FogEngine {
   #windSourceCount = 0;
   #phaseListeners = new Set();
 
-  constructor({ gpuDevice, frameTarget, renderer, kernels, params, settings, pointerWind, scenes, assetBaseUrl, random, logger }) {
+  constructor({ gpuDevice, frameTarget, renderer, kernels, params, settings, pointerWind, scenes, gpuTimer, clock, assetBaseUrl, random, logger }) {
     this.#device = gpuDevice.device;
     this.#frameTarget = frameTarget;
     this.#kernels = kernels;
@@ -60,7 +60,8 @@ export class FogEngine {
     this.#random = random;
     this.#logger = logger;
     this.#renderer = renderer;
-    this.#timer = gpuDevice.hasTimestamps ? new GpuTimer(this.#device, logger) : null;
+    this.#timer = gpuTimer;
+    this.#clock = clock;
     settings.subscribe((key) => this.#settingChanged(key));
     this.#device.lost.then((info) => this.#deviceLost(info));
   }
@@ -282,7 +283,7 @@ export class FogEngine {
       ...this.#solver.solverParams(frameTime),
     });
     const windSources = this.#pointerWind.windSources({
-      nowSeconds: performance.now() / 1000,
+      nowSeconds: this.#clock.nowSeconds(),
       realSeconds: frameTime.realSeconds,
       strength: settings.windStrength,
       radius: settings.windRadius,

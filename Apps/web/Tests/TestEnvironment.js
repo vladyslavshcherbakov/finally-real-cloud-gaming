@@ -62,6 +62,7 @@ export class TestEnvironment {
       },
       storage,
       random: () => 0,
+      clock: { nowSeconds: () => performance.now() / 1000 },
       logger,
     });
     new FogScreen({ canvas, message, engine: graph.engine, pointerWind: graph.pointerWind, logger }).connect();

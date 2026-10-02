@@ -3,6 +3,7 @@ import { ShaderLibrary } from '../Engine/Gpu/ShaderLibrary.js';
 import { KernelLibrary } from '../Engine/Gpu/Kernel.js';
 import { ParamsBuffer } from '../Engine/Gpu/ParamsBuffer.js';
 import { FogEngine } from '../Engine/FogEngine.js';
+import { GpuTimer } from '../Engine/Gpu/GpuTimer.js';
 import { FOG_FIELD_SHADERS } from '../Engine/Field/FogField.js';
 import { FogRenderer, FOG_RENDERER_SHADERS } from '../Engine/Render/FogRenderer.js';
 import { NOISE_SHADERS } from '../Engine/Field/NoiseTextures.js';
@@ -24,7 +25,7 @@ export class AppGraph {
   }
 }
 
-export async function createAppGraph({ createFrameTarget, storage, random, logger }) {
+export async function createAppGraph({ createFrameTarget, storage, random, clock, logger }) {
   const gpuDevice = await requestGpuDevice(logger.forArea('gpu'));
   const frameTarget = createFrameTarget(gpuDevice);
   const settings = new SettingsModel(loadedSettings(storage, logger.forArea('settings')), SOLVER_IDS);
@@ -37,8 +38,9 @@ export async function createAppGraph({ createFrameTarget, storage, random, logge
   const kernels = new KernelLibrary(gpuDevice.device, shaders, params, logger.forArea('shaders'));
   const pointerWind = new PointerWind();
   const renderer = await FogRenderer.create(gpuDevice.device, shaders, params, frameTarget.format);
+  const gpuTimer = gpuDevice.hasTimestamps ? new GpuTimer(gpuDevice.device, logger.forArea('gpu')) : null;
   const engine = new FogEngine({
-    gpuDevice, frameTarget, renderer, kernels, params, settings, pointerWind, scenes,
+    gpuDevice, frameTarget, renderer, kernels, params, settings, pointerWind, scenes, gpuTimer, clock,
     assetBaseUrl: SCENES_URL, random, logger: logger.forArea('engine'),
   });
   return new AppGraph({ engine, settings, pointerWind });

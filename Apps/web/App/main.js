@@ -6,6 +6,7 @@ import { SettingsPanel } from '../Features/Settings/SettingsPanel.js';
 import { Logger } from '../../../Shared/Logging/Logger.js';
 
 const FRESH_FILES_WORKER_URL = new URL('../freshFilesWorker.js', import.meta.url);
+const SYSTEM_CLOCK = { nowSeconds: () => performance.now() / 1000 };
 const WEBGPU_HINT = 'This game needs a browser with WebGPU: Chrome or Edge 113+, Safari 26+, or Firefox 141+ on Windows.';
 
 async function start() {
@@ -21,6 +22,7 @@ async function start() {
         setItem: (key, value) => window.localStorage.setItem(key, value),
       },
       random: Math.random,
+      clock: SYSTEM_CLOCK,
       logger,
     });
     new FogScreen({ canvas, message, engine: graph.engine, pointerWind: graph.pointerWind, logger: logger.forArea('screen') }).connect();
