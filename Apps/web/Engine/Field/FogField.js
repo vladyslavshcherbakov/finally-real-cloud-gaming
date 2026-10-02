@@ -24,7 +24,8 @@ const WIND_REACH_KERNEL = {
   shader: 'wind_reach',
   workgroupSize: [8, 8, 1],
   bindings: {
-    fog: 'texture3d', sceneDepth: 'texture2d', flowNoise: 'texture3d', clampSampler: 'sampler', repeatSampler: 'sampler', windReachOut: VECTOR_OUT,
+    fog: 'texture3d', flow: 'texture3d', sceneDepth: 'texture2d', flowNoise: 'texture3d', clampSampler: 'sampler', repeatSampler: 'sampler',
+    windDepthInLayers: 'readWrite:array<f32>', windReachOut: VECTOR_OUT,
   },
 };
 const FORCES_KERNEL = {
@@ -63,16 +64,19 @@ export const FOG_FIELD_KERNELS = [
 export const FOG_FIELD_SHADERS = [...new Set(FOG_FIELD_KERNELS.map((spec) => spec.shader))];
 
 export class FogField {
+  #device;
   #kernels;
   #noise;
   #fogIndex = 0;
   #lightIndex = 0;
 
   constructor(device, kernels, noise, size) {
+    this.#device = device;
     this.#kernels = kernels;
     this.#noise = noise;
     this.size = size;
     this.cellCount = size[0] * size[1] * size[2];
+    this.columnCount = size[0] * size[1];
     const vectorTexture = (label) => createTexture3D(device, label, size, VECTOR_FORMAT);
     this.velocities = [vectorTexture('velocity A'), vectorTexture('velocity B'), vectorTexture('velocity C')];
     this.velocity = this.velocities[0];
@@ -82,6 +86,7 @@ export class FogField {
     this.solids = createTexture3D(device, 'solids', size, SOLIDS_FORMAT);
     this.lightTextures = [vectorTexture('light A'), vectorTexture('light B')];
     this.windReach = vectorTexture('wind reach');
+    this.windDepthInLayers = createStorageBuffer(device, 'wind depth in layers', this.columnCount * 4, GPUBufferUsage.COPY_DST);
     this.vorticity = vectorTexture('vorticity');
     this.acceleration = vectorTexture('acceleration');
     this.divergence = createStorageBuffer(device, 'divergence', this.cellCount * 4);
@@ -119,6 +124,7 @@ export class FogField {
 
   resetFog(pass, sceneDepth) {
     this.#fogIndex = 0;
+    this.#device.queue.writeBuffer(this.windDepthInLayers, 0, new Float32Array(this.columnCount));
     this.#kernels.kernel(FOG_RESET_KERNEL).dispatch(pass, {
       flowNoise: this.#noise.flow, repeatSampler: this.repeatSampler, fogOut: this.fogTextures[0], flowOut: this.flowTextures[0],
     }, this.size);
@@ -127,7 +133,8 @@ export class FogField {
 
   measureWindReach(pass, sceneDepth) {
     this.#kernels.kernel(WIND_REACH_KERNEL).dispatch(pass, {
-      fog: this.fog, sceneDepth, flowNoise: this.#noise.flow, clampSampler: this.clampSampler, repeatSampler: this.repeatSampler, windReachOut: this.windReach,
+      fog: this.fog, flow: this.flow, sceneDepth, flowNoise: this.#noise.flow, clampSampler: this.clampSampler, repeatSampler: this.repeatSampler,
+      windDepthInLayers: this.windDepthInLayers, windReachOut: this.windReach,
     }, [this.size[0], this.size[1], 1]);
   }
 
@@ -171,6 +178,7 @@ export class FogField {
     for (const texture of textures) texture.destroy();
     this.pressureSolver.destroy();
     this.diagnostics.destroy();
+    this.windDepthInLayers.destroy();
     this.divergence.destroy();
     this.pressure.destroy();
   }

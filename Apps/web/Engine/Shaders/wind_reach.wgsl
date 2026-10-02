@@ -1,8 +1,10 @@
 //#include opening_fog
 
 const DEPTH_LAYERS = 8.0;
-const SHIELDING_PER_FOGGY_LAYER = 3.0;
-const SHARE_OF_OPENING_FOG_THAT_STARTS_TO_SHIELD = 0.2;
+const SECONDS_OF_FULL_WIND_TO_REACH_THE_END_OF_THE_FOG = 3.0;
+const SECONDS_FOR_STILL_AIR_TO_WITHDRAW_FROM_THE_END_OF_THE_FOG = 6.0;
+const MOVED_AIR_SHARE_OF_STILL_AIR = 0.02;
+const NEAREST_SLICE = 0u;
 const COLUMN_OPTICAL_DEPTH_CLEARED_AT_THE_PLAIN_RATE = 5.0;
 const WIND_REACH_BEYOND_THE_SURFACE = 1.15;
 
@@ -13,7 +15,8 @@ fn main(@builtin(global_invocation_id) column: vec3u) {
   let openingPerMeanBaseFog = openingOpticalDepthPerMeanBaseFog(column.xy, surfaceMetres);
   let extinctionPerBaseFog = openingPerMeanBaseFog / fogMetresInFrontOf(surfaceMetres);
   let clearingSpeedUp = max(1.0, columnOpticalDepth(column.xy, surfaceMetres, extinctionPerBaseFog) / COLUMN_OPTICAL_DEPTH_CLEARED_AT_THE_PLAIN_RATE);
-  storeWindReachOfEachSlice(column.xy, surfaceMetres, clearingSpeedUp, openingPerMeanBaseFog);
+  let reachedLayers = updatedWindDepthInLayers(column.xy);
+  storeWindReachOfEachSlice(column.xy, surfaceMetres, reachedLayers, clearingSpeedUp, openingPerMeanBaseFog);
 }
 
 fn columnOpticalDepth(column: vec2u, surfaceMetres: f32, extinctionPerBaseFog: f32) -> f32 {
@@ -24,26 +27,27 @@ fn columnOpticalDepth(column: vec2u, surfaceMetres: f32, extinctionPerBaseFog: f
   return opticalDepth;
 }
 
-fn storeWindReachOfEachSlice(column: vec2u, surfaceMetres: f32, clearingSpeedUp: f32, openingPerMeanBaseFog: f32) {
+fn updatedWindDepthInLayers(column: vec2u) -> f32 {
+  let columnIndex = column.y * u32(params.gridWidth) + column.x;
+  let movedAirInFront = textureLoad(flow, vec3u(column, NEAREST_SLICE), 0).w;
+  let layersPerSecond = select(
+    DEPTH_LAYERS / SECONDS_OF_FULL_WIND_TO_REACH_THE_END_OF_THE_FOG * movedAirInFront,
+    -DEPTH_LAYERS / SECONDS_FOR_STILL_AIR_TO_WITHDRAW_FROM_THE_END_OF_THE_FOG,
+    movedAirInFront < MOVED_AIR_SHARE_OF_STILL_AIR);
+  let storedLayers = windDepthInLayers[columnIndex];
+  let layersBefore = select(0.0, storedLayers, isFiniteNumber(storedLayers));
+  let layersNow = clamp(layersBefore + layersPerSecond * stepSeconds(), 0.0, DEPTH_LAYERS + 1.0);
+  windDepthInLayers[columnIndex] = layersNow;
+  return layersNow;
+}
+
+fn storeWindReachOfEachSlice(column: vec2u, surfaceMetres: f32, reachedLayers: f32, clearingSpeedUp: f32, openingPerMeanBaseFog: f32) {
   let layerMetres = params.farSliceMetres / DEPTH_LAYERS;
-  var foggyMetresInFront = 0.0;
   for (var slice = 0u; slice < u32(params.gridDepth); slice++) {
-    let foggyMetresHere = shieldingShare(shareOfOpeningFogLeft(column, slice, surfaceMetres)) * sliceMetresInFrontOfSurface(slice, surfaceMetres);
-    let foggyLayersInFront = (foggyMetresInFront + 0.5 * foggyMetresHere) / layerMetres;
-    let reach = exp(-SHIELDING_PER_FOGGY_LAYER * foggyLayersInFront) * shareInFrontOfSurface(slice, surfaceMetres);
+    let layersOfDepth = sliceDepthMetres(f32(slice) + 0.5) / layerMetres;
+    let reach = (1.0 - smoothstep(reachedLayers, reachedLayers + 1.0, layersOfDepth)) * shareInFrontOfSurface(slice, surfaceMetres);
     textureStore(windReachOut, vec3u(column, slice), vec4f(reach, clearingSpeedUp, fogCanLiveIn(slice, surfaceMetres), openingPerMeanBaseFog));
-    foggyMetresInFront += foggyMetresHere;
   }
-}
-
-fn shareOfOpeningFogLeft(column: vec2u, slice: u32, surfaceMetres: f32) -> f32 {
-  if (sliceMetresInFrontOfSurface(slice, surfaceMetres) <= 0.0) { return 0.0; }
-  let openingFog = baseFogDensity(vec3f(vec2f(column) + 0.5, f32(slice) + 0.5));
-  return clamp(textureLoad(fog, vec3u(column, slice), 0).r / max(openingFog, 1e-4), 0.0, 1.0);
-}
-
-fn shieldingShare(shareOfOpeningFog: f32) -> f32 {
-  return smoothstep(SHARE_OF_OPENING_FOG_THAT_STARTS_TO_SHIELD, 1.0, shareOfOpeningFog);
 }
 
 fn shareInFrontOfSurface(slice: u32, surfaceMetres: f32) -> f32 {

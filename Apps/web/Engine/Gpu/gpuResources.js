@@ -16,11 +16,11 @@ export function createTexture3D(device, label, size, format) {
 
 const STORAGE_BUFFER_ALIGNMENT = 16;
 
-export function createStorageBuffer(device, label, byteCount) {
+export function createStorageBuffer(device, label, byteCount, extraUsage = 0) {
   const buffer = device.createBuffer({
     label,
     size: Math.max(STORAGE_BUFFER_ALIGNMENT, Math.ceil(byteCount / STORAGE_BUFFER_ALIGNMENT) * STORAGE_BUFFER_ALIGNMENT),
-    usage: GPUBufferUsage.STORAGE,
+    usage: GPUBufferUsage.STORAGE | extraUsage,
     mappedAtCreation: true,
   });
   new Uint8Array(buffer.getMappedRange()).fill(0);
