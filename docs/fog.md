@@ -17,8 +17,7 @@
 - The wind carries the fog along the move and a little away into the scene. Fog it carries past the edge of the screen or into the distance is gone.
 - Air the wind set moving mixes clean air into the fog it carries for about two seconds, wherever that air flows. Each pass over a spot thins it by about the same amount, however fast the pass.
 - In every part of the view, the wind reaches the air in front of the surface there, up to the sky.
-- The fog nearest the viewer shields the fog behind it from the wind, so the view opens layer by layer.
-- A deep column of fog, such as the sky, clears in about as many swipes as a short one in front of a near roof.
+- The wind clears the fog from the viewer into the distance, in six layers of depth between the viewer and the farthest surface. It reaches a layer fully only once the layers in front of it are clear, so near things come out of the fog first and the far town and the sky last. The fog left behind fills the distance instead of lying on the surfaces.
 - The fog does not grow back. Fog that the wind pushes past the edge of the screen or into the distance is gone for good.
 - Fog that stays on the screen keeps swirling and creeps into clear air. It does not creep behind surfaces, so still fog keeps its amount.
 - Fog lives only in front of the surfaces of the photo. Behind a surface each cell only repeats the fog just in front of it, so fog that swirls against a building is neither lost nor kept hidden where the wind cannot reach.
