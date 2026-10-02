@@ -1,4 +1,6 @@
 import { WindSource } from '../Entities/WindSource.js';
+import { Vortex } from '../Entities/Vortex.js';
+import { CircleGesture, TURNS_TO_START_A_VORTEX } from '../Entities/CircleGesture.js';
 
 export const POINTER_KINDS = {
   mouse: { blowsWhileHovering: true, staysAfterRelease: true },
@@ -13,6 +15,7 @@ const STILL_AFTER_SECONDS = 0.04;
 const SHORTEST_MOVE_SECONDS = 1 / 240;
 const PUFF_AFTER_RELEASE_SECONDS = 0.5;
 const HOVERING_SHARE_OF_STRENGTH = 1 / 3;
+const VORTEX_FADE_SECONDS = 2;
 
 export class UnknownPointerKind extends Error {
   constructor(rawKind) {
@@ -33,6 +36,7 @@ export class UnknownPointerEvent extends Error {
 const HOVERING = Object.freeze({ name: 'hovering' });
 const PRESSED = Object.freeze({ name: 'pressed' });
 const GONE = Object.freeze({ name: 'gone' });
+const SPINNING = Object.freeze({ name: 'spinning' });
 
 export function pointerKind(rawKind) {
   if (!(rawKind in POINTER_KINDS)) throw new UnknownPointerKind(rawKind);
@@ -41,6 +45,7 @@ export function pointerKind(rawKind) {
 
 export class PointerWind {
   #pointersById = new Map();
+  #vortexStates = [];
 
   pointerPressed({ id, kind, u, v, timeSeconds }) {
     const pointer = this.#trackedPointer({ id, kind, u, v, timeSeconds });
@@ -56,6 +61,7 @@ export class PointerWind {
     pointer.u = u;
     pointer.v = v;
     pointer.lastMoveSeconds = timeSeconds;
+    pointer.circleGesture.pointerMoved({ u, v, timeSeconds });
   }
 
   pointerReleased({ id, timeSeconds }) {
@@ -100,10 +106,54 @@ export class PointerWind {
     return sources;
   }
 
+  vortices({ nowSeconds, strength }) {
+    this.#releaseVorticesNoLongerCircled(nowSeconds);
+    this.#spinVorticesOfCirclingPointers(nowSeconds);
+    this.#vortexStates = this.#vortexStates.filter((vortexState) => fadeShare(vortexState, nowSeconds) > 0);
+    return this.#vortexStates.map((vortexState) => new Vortex({
+      u: vortexState.u,
+      v: vortexState.v,
+      radius: vortexState.radius,
+      spin: vortexState.spin,
+      strength: strength * vortexState.strengthShare * fadeShare(vortexState, nowSeconds),
+    }));
+  }
+
+  #releaseVorticesNoLongerCircled(nowSeconds) {
+    for (const vortexState of this.#vortexStates.filter((state) => state.phase === SPINNING)) {
+      const pointer = this.#pointersById.get(vortexState.pointerId);
+      const isStillCircled = pointer !== undefined && blowsInPhase(pointer) && pointer.circleGesture.circle(nowSeconds) !== null;
+      if (!isStillCircled) vortexState.phase = Object.freeze({ name: 'fading', releasedAtSeconds: nowSeconds });
+    }
+  }
+
+  #spinVorticesOfCirclingPointers(nowSeconds) {
+    for (const [id, pointer] of this.#pointersById) {
+      if (!blowsInPhase(pointer)) continue;
+      const drawnCircle = pointer.circleGesture.circle(nowSeconds);
+      if (drawnCircle === null) continue;
+      let vortexState = this.#vortexStates.find((state) => state.phase === SPINNING && state.pointerId === id);
+      if (vortexState === undefined) {
+        if (drawnCircle.turns < TURNS_TO_START_A_VORTEX) continue;
+        vortexState = { pointerId: id, phase: SPINNING };
+        this.#vortexStates.push(vortexState);
+      }
+      Object.assign(vortexState, {
+        u: drawnCircle.u,
+        v: drawnCircle.v,
+        radius: drawnCircle.radius,
+        spin: drawnCircle.spin,
+        strengthShare: strengthShareInPhase(pointer.phase),
+      });
+    }
+  }
+
   #trackedPointer({ id, kind, u, v, timeSeconds }) {
     let pointer = this.#pointersById.get(id);
     if (!pointer) {
-      pointer = { kind, u, v, velocityU: 0, velocityV: 0, phase: HOVERING, lastMoveSeconds: timeSeconds };
+      pointer = {
+        kind, u, v, velocityU: 0, velocityV: 0, phase: HOVERING, lastMoveSeconds: timeSeconds, circleGesture: new CircleGesture(),
+      };
       this.#pointersById.set(id, pointer);
     }
     return pointer;
@@ -137,6 +187,15 @@ function strengthShareInPhase(phase) {
       return 1;
     case 'gone':
       return 0;
+  }
+}
+
+function fadeShare(vortexState, nowSeconds) {
+  switch (vortexState.phase.name) {
+    case 'spinning':
+      return 1;
+    case 'fading':
+      return Math.max(0, 1 - (nowSeconds - vortexState.phase.releasedAtSeconds) / VORTEX_FADE_SECONDS);
   }
 }
 

@@ -36,6 +36,7 @@ export class FogEngine {
   #framesInFlight = 0;
   #averageFrameSeconds = null;
   #windSourceCount = 0;
+  #vortexCount = 0;
   #phaseListeners = new Set();
 
   constructor({ gpuDevice, frameTarget, renderer, kernels, params, settings, pointerWind, scenes, gpuTimer, clock, diagnosticsLog, assetBaseUrl, random, logger }) {
@@ -211,7 +212,17 @@ export class FogEngine {
     });
     this.#windSourceCount = windSources.length;
     this.#params.setWindSources(windSources);
+    const vortices = this.#pointerWind.vortices({ nowSeconds: this.#clock.nowSeconds(), strength: settings.windStrength });
+    this.#reportVortexCountChange(vortices);
+    this.#params.setVortices(vortices);
     this.#params.upload();
+  }
+
+  #reportVortexCountChange(vortices) {
+    if (vortices.length === this.#vortexCount) return;
+    const vortexDescriptions = vortices.map((vortex) => `at ${vortex.u.toFixed(2)},${vortex.v.toFixed(2)} radius ${vortex.radius.toFixed(2)} spin ${vortex.spin}`);
+    this.#logger.info(`vortices ${this.#vortexCount} to ${vortices.length}${vortexDescriptions.length > 0 ? `: ${vortexDescriptions.join('; ')}` : ''}`);
+    this.#vortexCount = vortices.length;
   }
 
   #encodeFrame() {

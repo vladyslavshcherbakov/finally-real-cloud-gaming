@@ -13,6 +13,7 @@
 - A mouse blows while it moves, with or without a button. Without a button it blows at a third of the strength, so moving it to a spot thins only the nearest fog on the way and leaves fog there to blow away.
 - A tap, or a pressed mouse button, blows at full strength at once in every direction from that point and away into the scene. After it is lifted, the blow fades out over half a second, so a short tap still makes a puff.
 - As the finger moves, the blow turns from every direction into the direction of the move, and a quick move blows only along it.
+- Four quick circles in a row, with a finger, a pressed mouse or a mouse without a button, start a vortex at the centre of the circle, as wide as the circle and turning the same way. While the circling goes on, the vortex follows it. It spins the air, pulls it toward its centre and carries it into the scene there, so the fog it catches spirals in and thins away at the centre. A mouse without a button makes a vortex a third as strong. When the circling stops, the vortex fades out over two seconds.
 - When the wind stops, the air settles back to its base state within a fraction of a second, so it does not carry fog back into the cleared spot.
 - The wind carries the fog along the move and a little away into the scene. Fog it carries past the edge of the screen or into the distance is gone.
 - Air the wind set moving mixes clean air into the fog it carries for about two seconds, wherever that air flows. Each pass over a spot thins the fog the air has reached by about the same amount, however fast the pass.

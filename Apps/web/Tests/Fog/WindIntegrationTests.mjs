@@ -1,9 +1,13 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { BrowserHarness } from '../BrowserHarness.mjs';
+import { TURNS_TO_START_A_VORTEX } from '../../../../Shared/Domain/Entities/CircleGesture.js';
 
 const SWEEP_BAND = { left: 0.3, right: 0.7, top: 0.55, bottom: 0.65 };
 const SWEEP = { fromX: 60, toX: 260, y: 120, moves: 20, framesPerMove: 1, passes: 3 };
+const CIRCLES = { centreX: 160, centreY: 100, radius: 30, movesPerTurn: 16, framesPerMove: 1 };
+const CENTRE_OF_THE_CIRCLES = { left: 0.475, right: 0.525, top: 0.46, bottom: 0.54 };
+const NARROWEST_WIND = 0.02;
 
 let harness;
 
@@ -58,3 +62,17 @@ test('fog_withAReturnSpeed_closesTheClearedPathAfterTheWindStops', async () => {
   await environment.close();
 });
 
+
+test('fog_whenTheMouseCirclesQuicklyEnoughTimes_clearsTheCentreOfTheCircle', async () => {
+  const environment = await harness.openEnvironment({ returnRate: 0, fogThickness: 2, windRadius: NARROWEST_WIND });
+  await environment.advance(3);
+  const differenceBeforeCircling = await environment.differenceFromPhoto(CENTRE_OF_THE_CIRCLES);
+
+  await environment.circleMouse({ ...CIRCLES, turns: TURNS_TO_START_A_VORTEX + 1.5 });
+  await environment.advance(30);
+
+  const differenceAfterCircling = await environment.differenceFromPhoto(CENTRE_OF_THE_CIRCLES);
+  assert.ok(differenceAfterCircling < differenceBeforeCircling * 0.97,
+    `difference at the centre of the circles: before ${differenceBeforeCircling}, after ${differenceAfterCircling}`);
+  await environment.close();
+});

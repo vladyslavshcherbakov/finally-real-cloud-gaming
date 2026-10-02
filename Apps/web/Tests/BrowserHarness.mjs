@@ -109,6 +109,17 @@ export class EnvironmentPage {
     await this.page.mouse.up();
   }
 
+  async circleMouse({ centreX, centreY, radius, turns, movesPerTurn, framesPerMove }) {
+    await this.page.mouse.move(centreX + radius, centreY);
+    await this.page.mouse.down();
+    for (let move = 1; move <= Math.round(turns * movesPerTurn); move++) {
+      const angle = (move / movesPerTurn) * 2 * Math.PI;
+      await this.page.mouse.move(centreX + radius * Math.cos(angle), centreY + radius * Math.sin(angle));
+      await this.advance(framesPerMove);
+    }
+    await this.page.mouse.up();
+  }
+
   async differenceFromPhoto(region) {
     return this.page.evaluate(async (canvasRegion) => {
       const photo = await window.environment.captureView('photo');

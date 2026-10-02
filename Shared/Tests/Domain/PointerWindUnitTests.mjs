@@ -1,6 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { PointerWind, pointerKind, UnknownPointerKind, POINTER_KINDS } from '../../Domain/UseCases/PointerWind.js';
+import { TURNS_TO_START_A_VORTEX } from '../../Domain/Entities/CircleGesture.js';
+
+const CIRCLE = { centreU: 0.4, centreV: 0.6, radius: 0.1, secondsPerTurn: 0.8, movesPerTurn: 48 };
 
 function sourcesAt(pointerWind, nowSeconds) {
   return pointerWind.windSources({ nowSeconds, realSeconds: 1 / 60, strength: 1, radius: 0.1 });
@@ -77,6 +80,97 @@ test('wind_whenTheMouseStopsForASecond_fadesOut', () => {
   assert.ok(Math.abs(source.velocityU) < 0.001, `velocity after a still second: ${source.velocityU}`);
 });
 
+test('vortex_whenAPointerCirclesQuicklyEnoughTimes_spinsAtTheCentreOfTheCircle', () => {
+  const pointerWind = new PointerWind();
+  pointerWind.pointerPressed({ id: 7, kind: POINTER_KINDS.touch, u: CIRCLE.centreU + CIRCLE.radius, v: CIRCLE.centreV, timeSeconds: 0 });
+
+  const endSeconds = circle(pointerWind, { id: 7, kind: POINTER_KINDS.touch, turns: TURNS_TO_START_A_VORTEX + 0.5, direction: 1 });
+
+  const vortices = pointerWind.vortices({ nowSeconds: endSeconds, strength: 1 });
+  assert.equal(vortices.length, 1);
+  assert.ok(Math.abs(vortices[0].u - CIRCLE.centreU) < 0.02 && Math.abs(vortices[0].v - CIRCLE.centreV) < 0.02,
+    `vortex centre ${vortices[0].u}, ${vortices[0].v}`);
+});
+
+test('vortex_whenAPointerCirclesOneTurnTooFew_doesNotStart', () => {
+  const pointerWind = new PointerWind();
+  pointerWind.pointerPressed({ id: 7, kind: POINTER_KINDS.touch, u: CIRCLE.centreU + CIRCLE.radius, v: CIRCLE.centreV, timeSeconds: 0 });
+
+  const endSeconds = circle(pointerWind, { id: 7, kind: POINTER_KINDS.touch, turns: TURNS_TO_START_A_VORTEX - 1, direction: 1 });
+
+  assert.deepEqual(pointerWind.vortices({ nowSeconds: endSeconds, strength: 1 }), []);
+});
+
+test('vortex_whenAFingerSwipesBackAndForth_doesNotStart', () => {
+  const pointerWind = new PointerWind();
+  pointerWind.pointerPressed({ id: 7, kind: POINTER_KINDS.touch, u: 0.3, v: 0.5, timeSeconds: 0 });
+
+  let timeSeconds = 0;
+  for (let swipe = 0; swipe < 4 * TURNS_TO_START_A_VORTEX; swipe++) {
+    for (let move = 1; move <= 10; move++) {
+      timeSeconds += 0.02;
+      const shareOfTheSwipe = swipe % 2 === 0 ? move / 10 : 1 - move / 10;
+      pointerWind.pointerMoved({ id: 7, kind: POINTER_KINDS.touch, u: 0.3 + 0.4 * shareOfTheSwipe, v: 0.5, timeSeconds });
+    }
+  }
+
+  assert.deepEqual(pointerWind.vortices({ nowSeconds: timeSeconds, strength: 1 }), []);
+});
+
+test('vortex_spin_followsTheDirectionOfTheCircle', () => {
+  const spins = [1, -1].map((direction) => {
+    const pointerWind = new PointerWind();
+    pointerWind.pointerPressed({ id: 7, kind: POINTER_KINDS.touch, u: CIRCLE.centreU + CIRCLE.radius, v: CIRCLE.centreV, timeSeconds: 0 });
+    const endSeconds = circle(pointerWind, { id: 7, kind: POINTER_KINDS.touch, turns: TURNS_TO_START_A_VORTEX + 0.5, direction });
+    return pointerWind.vortices({ nowSeconds: endSeconds, strength: 1 })[0].spin;
+  });
+
+  assert.ok(spins[0] !== 0 && spins[0] === -spins[1], `spins ${spins}`);
+});
+
+test('vortex_whenThePointerStopsCircling_fadesOutAndEnds', () => {
+  const pointerWind = new PointerWind();
+  pointerWind.pointerPressed({ id: 7, kind: POINTER_KINDS.touch, u: CIRCLE.centreU + CIRCLE.radius, v: CIRCLE.centreV, timeSeconds: 0 });
+  const endSeconds = circle(pointerWind, { id: 7, kind: POINTER_KINDS.touch, turns: TURNS_TO_START_A_VORTEX + 0.5, direction: 1 });
+  const [spinningVortex] = pointerWind.vortices({ nowSeconds: endSeconds, strength: 1 });
+
+  pointerWind.pointerReleased({ id: 7, timeSeconds: endSeconds });
+
+  const [fadingVortex] = vorticesAfterFrames(pointerWind, { fromSeconds: endSeconds, seconds: 1.5 });
+  assert.ok(fadingVortex.strength < spinningVortex.strength, `strength while spinning ${spinningVortex.strength}, after it ${fadingVortex.strength}`);
+  assert.deepEqual(pointerWind.vortices({ nowSeconds: endSeconds + 10, strength: 1 }), []);
+});
+
+test('vortex_whenAMouseCirclesWithoutAButton_spinsWeakerThanWithTheButtonPressed', () => {
+  const strengths = [false, true].map((isPressed) => {
+    const pointerWind = new PointerWind();
+    if (isPressed) pointerWind.pointerPressed({ id: 1, kind: POINTER_KINDS.mouse, u: CIRCLE.centreU + CIRCLE.radius, v: CIRCLE.centreV, timeSeconds: 0 });
+    const endSeconds = circle(pointerWind, { id: 1, kind: POINTER_KINDS.mouse, turns: TURNS_TO_START_A_VORTEX + 0.5, direction: 1 });
+    return pointerWind.vortices({ nowSeconds: endSeconds, strength: 1 })[0].strength;
+  });
+
+  assert.ok(strengths[0] < strengths[1], `strength without a button ${strengths[0]}, with it ${strengths[1]}`);
+});
+
 test('pointerKind_whenTheBrowserReportsAnUnknownKind_failsNamingIt', () => {
   assert.throws(() => pointerKind('stylus'), (error) => error instanceof UnknownPointerKind && error.rawKind === 'stylus');
 });
+
+function circle(pointerWind, { id, kind, turns, direction }) {
+  const moveCount = Math.round(turns * CIRCLE.movesPerTurn);
+  let timeSeconds = 0;
+  for (let move = 1; move <= moveCount; move++) {
+    timeSeconds = (move / CIRCLE.movesPerTurn) * CIRCLE.secondsPerTurn;
+    const angle = direction * (move / CIRCLE.movesPerTurn) * 2 * Math.PI;
+    pointerWind.pointerMoved({
+      id, kind, u: CIRCLE.centreU + CIRCLE.radius * Math.cos(angle), v: CIRCLE.centreV + CIRCLE.radius * Math.sin(angle), timeSeconds,
+    });
+  }
+  return timeSeconds;
+}
+
+function vorticesAfterFrames(pointerWind, { fromSeconds, seconds }) {
+  let vortices = [];
+  for (let frame = 1; frame <= seconds * 60; frame++) vortices = pointerWind.vortices({ nowSeconds: fromSeconds + frame / 60, strength: 1 });
+  return vortices;
+}

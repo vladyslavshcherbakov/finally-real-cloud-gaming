@@ -2,6 +2,7 @@
 
 const LARGEST_STABLE_DIFFUSION_STEP = 0.16;
 const MOVED_AIR_FADE_SECONDS = 2.0;
+const VORTEX_CORE_DISSIPATION_PER_SECOND = 2.0;
 
 struct CellMotion {
   centre: vec3f,
@@ -19,8 +20,9 @@ fn main(@builtin(global_invocation_id) cellId: vec3u) {
   if (any(cellId >= vec3u(gridSize()))) { return; }
   let motion = cellMotion(cellId);
   let windReachHere = textureLoad(windReach, cellId, 0);
-  let movedAir = movedAirShare(motion);
-  let density = updatedDensity(vec3i(cellId), motion, movedAir, windReachHere);
+  let wind = windEffect(motion.centre);
+  let movedAir = movedAirShare(motion, wind);
+  let density = updatedDensity(vec3i(cellId), motion, movedAir, wind.vortexCoreShare, windReachHere);
   let phaseOffsets = updatedDetailPhaseOffsets(motion);
   textureStore(fogOut, cellId, vec4f(max(density, 0.0), phaseOffsets.first));
   textureStore(flowOut, cellId, vec4f(phaseOffsets.second, movedAir));
@@ -32,18 +34,19 @@ fn cellMotion(cellId: vec3u) -> CellMotion {
   return CellMotion(centre, displacement, (centre - displacement) / gridSize());
 }
 
-fn movedAirShare(motion: CellMotion) -> f32 {
+fn movedAirShare(motion: CellMotion, wind: WindEffect) -> f32 {
   let carriedMark = textureSampleLevel(flow, clampSampler, motion.departureUvw, 0.0).w * exp(-stepSeconds() / MOVED_AIR_FADE_SECONDS);
-  return max(carriedMark, windEffect(motion.centre).movedAirShare);
+  return max(carriedMark, wind.movedAirShare);
 }
 
-fn updatedDensity(cell: vec3i, motion: CellMotion, movedAir: f32, windReachHere: vec4f) -> f32 {
+fn updatedDensity(cell: vec3i, motion: CellMotion, movedAir: f32, vortexCoreShare: f32, windReachHere: vec4f) -> f32 {
   if (windReachHere.b < 0.5) { return fogJustInFront(cell); }
   var density = textureLoad(advected, cell, 0).r;
   density = densityStillInsideTheGrid(density, motion, movedAir);
   density = densityAfterCreep(density, cell);
   density = densityAfterReturning(density, motion.centre);
-  return densityAfterWakeMixing(density, movedAir, windReachHere);
+  density = densityAfterWakeMixing(density, movedAir, windReachHere);
+  return densityAfterVortexCore(density, vortexCoreShare, windReachHere);
 }
 
 fn fogJustInFront(cell: vec3i) -> f32 {
@@ -83,6 +86,10 @@ fn densityAfterReturning(density: f32, centre: vec3f) -> f32 {
 
 fn densityAfterWakeMixing(density: f32, movedAir: f32, windReachHere: vec4f) -> f32 {
   return density * exp(-params.wakeMixing * movedAir * windReachHere.r * windReachHere.g * stepSeconds());
+}
+
+fn densityAfterVortexCore(density: f32, vortexCoreShare: f32, windReachHere: vec4f) -> f32 {
+  return density * exp(-VORTEX_CORE_DISSIPATION_PER_SECOND * vortexCoreShare * windReachHere.r * stepSeconds());
 }
 
 fn updatedDetailPhaseOffsets(motion: CellMotion) -> DetailPhaseOffsets {

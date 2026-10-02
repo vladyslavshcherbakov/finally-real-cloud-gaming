@@ -14,6 +14,7 @@ export const PARAM_FIELDS = [
   'returnRate', 'diffusion', 'vorticityConfinement', 'damping',
   'detailAmount', 'detailScalePerMetre', 'detailFlowPeriodSeconds', 'erosion',
   'windSourceCount', 'windStrength', 'windRadius', 'wakeMixing',
+  'vortexCount',
   'forwardScattering', 'multipleScattering', 'samplesPerSlice', 'debugView',
   'flipRatio',
   'respawnFractionPerStep', 'mpmSubstepSeconds', 'bulkStiffness', 'particlesPerCell',
@@ -26,7 +27,11 @@ const WIND_SOURCES = {
   structName: 'WindSourceParams', arrayName: 'windSources', countParam: 'windSourceCount',
   fields: ['u', 'v', 'velocityU', 'velocityV', 'radius', 'strength', 'outwardStrength'], maxCount: 8,
 };
-const PARAM_ARRAYS = [WIND_SOURCES];
+const VORTICES = {
+  structName: 'VortexParams', arrayName: 'vortices', countParam: 'vortexCount',
+  fields: ['u', 'v', 'radius', 'spin', 'strength'], maxCount: 4,
+};
+const PARAM_ARRAYS = [WIND_SOURCES, VORTICES];
 
 export class UnknownParam extends Error {
   constructor(name) {
@@ -76,6 +81,10 @@ export class ParamsBuffer {
 
   setWindSources(windSources) {
     this.#setArray(WIND_SOURCES, windSources);
+  }
+
+  setVortices(vortices) {
+    this.#setArray(VORTICES, vortices);
   }
 
   upload() {
