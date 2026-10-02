@@ -1,5 +1,6 @@
 import { createTexture3D, createStorageBuffer } from '../Gpu/gpuResources.js';
 import { PressureMultigrid, PRESSURE_MULTIGRID_KERNELS } from './PressureMultigrid.js';
+import { FieldDiagnostics, FIELD_DIAGNOSTICS_KERNEL } from './FieldDiagnostics.js';
 
 const VECTOR_FORMAT = 'rgba16float';
 const VECTOR_OUT = `write3d:${VECTOR_FORMAT}`;
@@ -56,7 +57,7 @@ const LIGHT_KERNEL = {
 
 export const FOG_FIELD_KERNELS = [
   SOLIDS_KERNEL, FOG_RESET_KERNEL, WIND_REACH_KERNEL, VORTICITY_KERNEL, FORCES_KERNEL, ADVECT_KERNEL, DIVERGENCE_KERNEL, ...PRESSURE_MULTIGRID_KERNELS,
-  PROJECT_KERNEL, FOG_UPDATE_KERNEL, LIGHT_KERNEL,
+  PROJECT_KERNEL, FOG_UPDATE_KERNEL, LIGHT_KERNEL, FIELD_DIAGNOSTICS_KERNEL,
 ];
 
 export const FOG_FIELD_SHADERS = [...new Set(FOG_FIELD_KERNELS.map((spec) => spec.shader))];
@@ -86,6 +87,7 @@ export class FogField {
     this.divergence = createStorageBuffer(device, 'divergence', this.cellCount * 4);
     this.pressure = createStorageBuffer(device, 'pressure', this.cellCount * 4);
     this.pressureSolver = new PressureMultigrid(device, kernels, size, this.divergence, this.pressure);
+    this.diagnostics = new FieldDiagnostics(device, kernels);
     this.clampSampler = device.createSampler({
       magFilter: 'linear', minFilter: 'linear', addressModeU: 'clamp-to-edge', addressModeV: 'clamp-to-edge', addressModeW: 'clamp-to-edge',
     });
@@ -168,6 +170,7 @@ export class FogField {
     const textures = [...this.velocities, ...this.fogTextures, ...this.flowTextures, this.advected, this.solids, ...this.lightTextures, this.windReach, this.vorticity, this.acceleration];
     for (const texture of textures) texture.destroy();
     this.pressureSolver.destroy();
+    this.diagnostics.destroy();
     this.divergence.destroy();
     this.pressure.destroy();
   }
