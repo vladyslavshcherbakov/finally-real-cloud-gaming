@@ -4,6 +4,7 @@ import { KernelLibrary } from '../Engine/Gpu/Kernel.js';
 import { ParamsBuffer } from '../Engine/Gpu/ParamsBuffer.js';
 import { FogEngine } from '../Engine/FogEngine.js';
 import { GpuTimer } from '../Engine/Gpu/GpuTimer.js';
+import { FieldDiagnosticsLog } from '../Engine/Field/FieldDiagnosticsLog.js';
 import { FOG_FIELD_SHADERS } from '../Engine/Field/FogField.js';
 import { FogRenderer, FOG_RENDERER_SHADERS } from '../Engine/Render/FogRenderer.js';
 import { NOISE_SHADERS } from '../Engine/Field/NoiseTextures.js';
@@ -41,6 +42,7 @@ export async function createAppGraph({ createFrameTarget, storage, random, clock
   const gpuTimer = gpuDevice.hasTimestamps ? new GpuTimer(gpuDevice.device, logger.forArea('gpu')) : null;
   const engine = new FogEngine({
     gpuDevice, frameTarget, renderer, kernels, params, settings, pointerWind, scenes, gpuTimer, clock,
+    diagnosticsLog: new FieldDiagnosticsLog(logger.forArea('field')),
     assetBaseUrl: SCENES_URL, random, logger: logger.forArea('engine'),
   });
   return new AppGraph({ engine, settings, pointerWind });

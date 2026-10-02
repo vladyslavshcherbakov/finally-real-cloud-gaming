@@ -15,8 +15,6 @@ const MOST_FRAMES_IN_FLIGHT = 2;
 const FRAME_TIME_SMOOTHING = 0.05;
 const LIGHT_UPDATE_EVERY_FRAMES = 2;
 const LIGHT_SMOOTHING_SECONDS = 0.8;
-const DIAGNOSED_SECONDS_AFTER_FOG_RESET = 20;
-const LATER_DIAGNOSTICS_EVERY_SECONDS = 10;
 
 export class FogEngine {
   #device;
@@ -32,6 +30,7 @@ export class FogEngine {
   #renderer;
   #timer;
   #clock;
+  #diagnosticsLog;
   #noise = null;
   #scene = null;
   #field = null;
@@ -42,13 +41,10 @@ export class FogEngine {
   #framesInFlight = 0;
   #averageFrameSeconds = null;
   #secondsSinceLight = Infinity;
-  #secondsSinceFogReset = 0;
-  #isDiagnosticsFrame = false;
-  #fogAtFirstDiagnostics = null;
   #windSourceCount = 0;
   #phaseListeners = new Set();
 
-  constructor({ gpuDevice, frameTarget, renderer, kernels, params, settings, pointerWind, scenes, gpuTimer, clock, assetBaseUrl, random, logger }) {
+  constructor({ gpuDevice, frameTarget, renderer, kernels, params, settings, pointerWind, scenes, gpuTimer, clock, diagnosticsLog, assetBaseUrl, random, logger }) {
     this.#device = gpuDevice.device;
     this.#frameTarget = frameTarget;
     this.#kernels = kernels;
@@ -62,6 +58,7 @@ export class FogEngine {
     this.#renderer = renderer;
     this.#timer = gpuTimer;
     this.#clock = clock;
+    this.#diagnosticsLog = diagnosticsLog;
     settings.subscribe((key) => this.#settingChanged(key));
     this.#device.lost.then((info) => this.#deviceLost(info));
   }
@@ -144,9 +141,7 @@ export class FogEngine {
     if (this.#frameTarget.resizeToDisplaySize()) this.#rebuildGrid(`canvas resized to ${this.#frameTarget.width}×${this.#frameTarget.height}`);
     this.#elapsedSeconds += frameTime.simulationSeconds;
     this.#secondsSinceLight += frameTime.simulationSeconds;
-    const previousSecondsSinceFogReset = this.#secondsSinceFogReset;
-    this.#secondsSinceFogReset += frameTime.simulationSeconds;
-    this.#isDiagnosticsFrame = isDiagnosticsSecond(previousSecondsSinceFogReset, this.#secondsSinceFogReset);
+    this.#diagnosticsLog.advance(frameTime.simulationSeconds);
     this.#frameIndex++;
     this.#writeParams(frameTime);
     this.#encodeFrame();
@@ -223,8 +218,7 @@ export class FogEngine {
   }
 
   #fogWasReset() {
-    this.#secondsSinceFogReset = 0;
-    this.#fogAtFirstDiagnostics = null;
+    this.#diagnosticsLog.fogWasReset();
   }
 
   #createSolver() {
@@ -305,50 +299,23 @@ export class FogEngine {
       this.#secondsSinceLight = 0;
     }
     const diagnostics = this.#field.diagnostics;
-    const isDiagnosed = this.#isDiagnosticsFrame && diagnostics.canMeasure;
+    const isDiagnosed = this.#diagnosticsLog.isReadingDue && diagnostics.canMeasure;
     if (isDiagnosed) diagnostics.measure(pass, this.#field);
     pass.end();
     this.#renderer.render(encoder, this.#frameTarget.currentView(), this.#field, this.#scene, isTimed ? this.#timer.endWrites : undefined);
     if (isTimed) this.#timer.copyResults(encoder);
     if (isDiagnosed) diagnostics.copyForReading(encoder);
     this.#device.queue.submit([encoder.finish()]);
-    if (isDiagnosed) this.#logFieldDiagnostics(diagnostics, Math.floor(this.#secondsSinceFogReset));
+    if (isDiagnosed) {
+      this.#diagnosticsLog.report(diagnostics.read(), {
+        solverId: this.#settings.values.solver, preset: this.#settings.values.quality, gridSize: this.#field.size,
+        framesPerSecond: this.stats.framesPerSecond, windSourceCount: this.#windSourceCount,
+      });
+    }
     this.#framesInFlight++;
     this.#device.queue.onSubmittedWorkDone().then(() => { this.#framesInFlight--; });
     if (isTimed) this.#timer.readResultsIfStillAvailable();
   }
-  async #logFieldDiagnostics(diagnostics, secondsSinceFogReset) {
-    let stats;
-    try {
-      stats = await diagnostics.read();
-    } catch (readError) {
-      this.#logger.info(`field diagnostics at ${secondsSinceFogReset} s not read: ${readError.message}`);
-      return;
-    }
-    this.#fogAtFirstDiagnostics ??= { near: stats.nearFog, far: stats.farFog };
-    const settings = this.#settings.values;
-    this.#logger.info(`field at ${secondsSinceFogReset} s after fog reset: ${settings.solver} ${settings.quality} ${this.#field?.size.join('×')},`
-      + ` ${Math.round(this.stats.framesPerSecond)} fps, ${this.#windSourceCount} wind sources`
-      + ` | fastest air near ${shown(stats.nearSpeedMax)} far ${shown(stats.farSpeedMax)} cells/s`
-      + ` | fog near ${shareOf(stats.nearFog, this.#fogAtFirstDiagnostics.near)} far ${shareOf(stats.farFog, this.#fogAtFirstDiagnostics.far)} of the first reading`
-      + ` | cells not finite: velocity at any step ${stats.brokenVelocityCells} fog ${stats.brokenFogCells} pressure ${stats.brokenPressureCells}`
-      + ` | largest acceleration ${shown(stats.accelerationMax)} vorticity ${shown(stats.vorticityMax)}`
-      + ` pressure ${shown(stats.pressureMax)} divergence ${shown(stats.divergenceMax)}`);
-  }
-}
-
-function isDiagnosticsSecond(previousSeconds, seconds) {
-  const second = Math.floor(seconds);
-  if (second === Math.floor(previousSeconds)) return false;
-  return second <= DIAGNOSED_SECONDS_AFTER_FOG_RESET || second % LATER_DIAGNOSTICS_EVERY_SECONDS === 0;
-}
-
-function shown(value) {
-  return Number(value.toPrecision(3));
-}
-
-function shareOf(value, firstValue) {
-  return firstValue > 0 ? `${Math.round((100 * value) / firstValue)}%` : `${shown(value)} (none at first)`;
 }
 
 function fogLayerSize(canvasWidth, canvasHeight, quality) {
