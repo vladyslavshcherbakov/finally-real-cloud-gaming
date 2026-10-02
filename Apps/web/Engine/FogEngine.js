@@ -37,6 +37,7 @@ export class FogEngine {
   #averageFrameSeconds = null;
   #windSourceCount = 0;
   #vortexCount = 0;
+  #probedUv = null;
   #phaseListeners = new Set();
 
   constructor({ gpuDevice, frameTarget, renderer, kernels, params, settings, pointerWind, scenes, gpuTimer, clock, diagnosticsLog, assetBaseUrl, random, logger }) {
@@ -214,6 +215,8 @@ export class FogEngine {
     this.#params.setWindSources(windSources);
     const vortices = this.#pointerWind.vortices({ nowSeconds: this.#clock.nowSeconds(), strength: settings.windStrength });
     this.#reportVortexCountChange(vortices);
+    const latestWindCentre = windSources[0] ?? vortices[0];
+    if (latestWindCentre !== undefined) this.#probedUv = { u: latestWindCentre.u, v: latestWindCentre.v };
     this.#params.setVortices(vortices);
     this.#params.upload();
   }
@@ -233,7 +236,7 @@ export class FogEngine {
     const field = this.#simulation.field;
     const diagnostics = field.diagnostics;
     const isDiagnosed = this.#diagnosticsLog.isReadingDue && diagnostics.canMeasure;
-    if (isDiagnosed) diagnostics.measure(pass, field);
+    if (isDiagnosed) diagnostics.measure(pass, field, this.#probedUv);
     pass.end();
     this.#renderer.render(encoder, this.#frameTarget.currentView(), field, this.#scene, isTimed ? this.#timer.endWrites : undefined);
     if (isTimed) this.#timer.copyResults(encoder);

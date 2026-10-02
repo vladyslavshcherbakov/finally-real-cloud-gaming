@@ -1,6 +1,10 @@
-const STAT_COUNT = 11;
-const STATS_BYTES = 64;
+const STAT_COUNT = 41;
+const STATS_BYTES = 256;
 const FOG_SUM_UNITS_PER_BASE_FOG = 100;
+const PROBE_COLUMN_X = 11;
+const PROBE_COLUMN_Y = 12;
+const HAS_PROBE = 13;
+const PROBE_DEPTH_BINS = 8;
 
 export const FIELD_DIAGNOSTICS_KERNEL = {
   shader: 'field_diagnostics',
@@ -8,6 +12,7 @@ export const FIELD_DIAGNOSTICS_KERNEL = {
     velocity: 'texture3d', velocityA: 'texture3d', velocityB: 'texture3d', velocityC: 'texture3d',
     fog: 'texture3d', acceleration: 'texture3d', vorticity: 'texture3d',
     pressure: 'read:array<f32>', divergence: 'read:array<f32>', stats: 'readWrite:array<atomic<u32>>',
+    windReach: 'texture3d', flow: 'texture3d', windBuildUp: 'read:array<f32>',
   },
 };
 
@@ -31,11 +36,18 @@ export class FieldDiagnostics {
     return !this.#isReading;
   }
 
-  measure(pass, field) {
-    this.#device.queue.writeBuffer(this.#stats, 0, new Uint32Array(STATS_BYTES / 4));
+  measure(pass, field, probedUv) {
+    const startingWords = new Uint32Array(STATS_BYTES / 4);
+    if (probedUv !== null) {
+      startingWords[PROBE_COLUMN_X] = Math.min(field.size[0] - 1, Math.max(0, Math.floor(probedUv.u * field.size[0])));
+      startingWords[PROBE_COLUMN_Y] = Math.min(field.size[1] - 1, Math.max(0, Math.floor(probedUv.v * field.size[1])));
+      startingWords[HAS_PROBE] = 1;
+    }
+    this.#device.queue.writeBuffer(this.#stats, 0, startingWords);
     this.#kernels.kernel(FIELD_DIAGNOSTICS_KERNEL).dispatch(pass, {
       velocity: field.velocity, velocityA: field.velocities[0], velocityB: field.velocities[1], velocityC: field.velocities[2], fog: field.fog, acceleration: field.acceleration, vorticity: field.vorticity,
       pressure: field.pressure, divergence: field.divergence, stats: this.#stats,
+      windReach: field.windReach, flow: field.flow, windBuildUp: field.windBuildUp,
     }, field.size);
   }
 
@@ -75,5 +87,18 @@ function fieldStats(words) {
     pressureMax: floats[8],
     divergenceMax: floats[9],
     brokenPressureCells: words[10],
+    probe: words[HAS_PROBE] === 1 ? probeStats(words, floats) : null,
+  };
+}
+
+function probeStats(words, floats) {
+  const depthBins = Array.from({ length: PROBE_DEPTH_BINS }, (_, bin) => bin);
+  return {
+    column: [words[PROBE_COLUMN_X], words[PROBE_COLUMN_Y]],
+    movedAirInFront: floats[14],
+    clearingSpeedUp: floats[15],
+    windBuildUp: floats[16],
+    meanFogByDepthBin: depthBins.map((bin) => (words[25 + bin] > 0 ? words[17 + bin] / words[25 + bin] / FOG_SUM_UNITS_PER_BASE_FOG : null)),
+    windReachByDepthBin: depthBins.map((bin) => floats[33 + bin]),
   };
 }

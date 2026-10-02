@@ -38,7 +38,7 @@ export async function projectedAir({ gridSize, solidShare, seed, projections, la
   field.velocity = field.velocities[currentIndex];
   const encoder = device.createCommandEncoder();
   const pass = encoder.beginComputePass();
-  field.diagnostics.measure(pass, field);
+  field.diagnostics.measure(pass, field, null);
   pass.end();
   field.diagnostics.copyForReading(encoder);
   device.queue.submit([encoder.finish()]);

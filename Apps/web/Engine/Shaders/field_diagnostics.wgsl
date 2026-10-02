@@ -12,6 +12,16 @@ const VORTICITY_MAX = 7u;
 const PRESSURE_MAX = 8u;
 const DIVERGENCE_MAX = 9u;
 const BROKEN_PRESSURE_CELLS = 10u;
+const PROBE_COLUMN_X = 11u;
+const PROBE_COLUMN_Y = 12u;
+const HAS_PROBE = 13u;
+const PROBE_MOVED_AIR_IN_FRONT = 14u;
+const PROBE_CLEARING_SPEED_UP = 15u;
+const PROBE_WIND_BUILD_UP = 16u;
+const PROBE_FOG_UNITS = 17u;
+const PROBE_FOG_CELLS = 25u;
+const PROBE_WIND_REACH = 33u;
+const PROBE_DEPTH_BINS = 8u;
 
 fn recordMax(slot: u32, value: f32) {
   atomicMax(&stats[slot], bitcast<u32>(abs(value)));
@@ -50,4 +60,22 @@ fn main(@builtin(global_invocation_id) cellId: vec3u) {
   } else {
     atomicAdd(&stats[BROKEN_PRESSURE_CELLS], 1u);
   }
+
+  let isProbedColumn = atomicLoad(&stats[HAS_PROBE]) == 1u
+    && cellId.x == atomicLoad(&stats[PROBE_COLUMN_X]) && cellId.y == atomicLoad(&stats[PROBE_COLUMN_Y]);
+  if (isProbedColumn) { recordProbedCell(cellId, cellFog); }
+}
+
+fn recordProbedCell(cellId: vec3u, cellFog: f32) {
+  let windReachHere = textureLoad(windReach, cellId, 0);
+  if (cellId.z == 0u) {
+    recordMax(PROBE_MOVED_AIR_IN_FRONT, textureLoad(flow, cellId, 0).w);
+    recordMax(PROBE_CLEARING_SPEED_UP, windReachHere.g);
+    recordMax(PROBE_WIND_BUILD_UP, windBuildUp[cellId.y * u32(params.gridWidth) + cellId.x]);
+  }
+  if (windReachHere.b < 0.5 || !isFiniteNumber(cellFog)) { return; }
+  let depthBin = min(cellId.z * PROBE_DEPTH_BINS / u32(params.gridDepth), PROBE_DEPTH_BINS - 1u);
+  atomicAdd(&stats[PROBE_FOG_UNITS + depthBin], u32(clamp(cellFog, 0.0, LARGEST_COUNTED_FOG) * FOG_SUM_UNITS_PER_BASE_FOG));
+  atomicAdd(&stats[PROBE_FOG_CELLS + depthBin], 1u);
+  recordMax(PROBE_WIND_REACH + depthBin, windReachHere.r);
 }

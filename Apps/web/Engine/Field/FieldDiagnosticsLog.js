@@ -38,6 +38,7 @@ export class FieldDiagnosticsLog {
     }
     this.#fogAtFirstReading ??= { near: reading.nearFog, far: reading.farFog };
     this.#logger.info(this.#readingLine(reading, secondsSinceFogReset, simulationContext));
+    if (reading.probe !== null) this.#logger.info(clearingLine(reading.probe, secondsSinceFogReset, simulationContext.gridSize));
     const nonFiniteCells = reading.brokenVelocityCells + reading.brokenFogCells + reading.brokenPressureCells;
     if (nonFiniteCells > 0) {
       this.#logger.warn(`field at ${secondsSinceFogReset} s holds ${nonFiniteCells} values that are not finite; the projection treats them as still air`);
@@ -54,6 +55,17 @@ export class FieldDiagnosticsLog {
       + ` | largest acceleration ${threeSignificantDigits(reading.accelerationMax)} vorticity ${threeSignificantDigits(reading.vorticityMax)}`
       + ` pressure ${threeSignificantDigits(reading.pressureMax)} divergence ${threeSignificantDigits(reading.divergenceMax)}`;
   }
+}
+
+function clearingLine(probe, secondsSinceFogReset, gridSize) {
+  const slicesPerBin = gridSize[2] / probe.meanFogByDepthBin.length;
+  const binNames = probe.meanFogByDepthBin.map((_, bin) => `slices ${bin * slicesPerBin}-${(bin + 1) * slicesPerBin - 1}`);
+  const meanFog = probe.meanFogByDepthBin.map((fog, bin) => `${binNames[bin]} ${fog === null ? 'behind the surface' : fog.toFixed(3)}`);
+  const windReach = probe.windReachByDepthBin.map((reach, bin) => `${binNames[bin]} ${reach.toFixed(2)}`);
+  return `[CLEARING] at ${secondsSinceFogReset} s, column ${probe.column.join(',')}:`
+    + ` wind build-up ${probe.windBuildUp.toFixed(2)}, moved air in front ${probe.movedAirInFront.toFixed(2)}, thick fog speed-up ${probe.clearingSpeedUp.toFixed(2)}`
+    + ` | mean fog: ${meanFog.join(', ')}`
+    + ` | wind reach: ${windReach.join(', ')}`;
 }
 
 function isReadingSecond(previousSeconds, seconds) {
