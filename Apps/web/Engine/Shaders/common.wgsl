@@ -171,6 +171,7 @@ struct WindEffect {
 }
 
 const SWEEP_PUSH = 8.0;
+const SIDEWAYS_SPREAD_PUSH = 2.0;
 const INTO_SCENE_PUSH_WHILE_SWEEPING = 1.5;
 const OUTWARD_PUSH = 15.0;
 const INTO_SCENE_PUSH = 6.0;
@@ -228,5 +229,14 @@ fn sourcePush(source: WindSourceParams, fromSource: vec2f, motion: f32) -> vec3f
   let sweepInCells = vec2f(source.velocityU, source.velocityV) * gridSize().xy;
   let outwardInCells = normalize(vec3f(fromSource / params.canvasAspect * gridSize().xy, 0.0) + vec3f(1e-5));
   let outwardPush = source.outwardStrength * (1.0 - motion) * (outwardInCells * OUTWARD_PUSH + vec3f(0.0, 0.0, INTO_SCENE_PUSH));
-  return vec3f(sweepInCells * SWEEP_PUSH, motion * INTO_SCENE_PUSH_WHILE_SWEEPING) + outwardPush;
+  let spreadInCells = sidewaysFromThePath(source, fromSource) / vec2f(params.canvasAspect, 1.0) * gridSize().xy * SIDEWAYS_SPREAD_PUSH * motion;
+  return vec3f(sweepInCells * SWEEP_PUSH + spreadInCells, motion * INTO_SCENE_PUSH_WHILE_SWEEPING) + outwardPush;
+}
+
+fn sidewaysFromThePath(source: WindSourceParams, fromSource: vec2f) -> vec2f {
+  let sweep = vec2f(source.velocityU, source.velocityV) * vec2f(params.canvasAspect, 1.0);
+  let sweepLength = length(sweep);
+  if (sweepLength < 1e-5) { return vec2f(0.0); }
+  let alongThePath = sweep / sweepLength;
+  return (fromSource - dot(fromSource, alongThePath) * alongThePath) / source.radius;
 }
