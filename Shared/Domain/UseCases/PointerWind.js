@@ -12,6 +12,7 @@ const VELOCITY_DECAY_PER_SECOND = 12;
 const STILL_AFTER_SECONDS = 0.04;
 const SHORTEST_MOVE_SECONDS = 1 / 240;
 const OUTWARD_BLOW_RAMP_SECONDS = 1;
+const OUTWARD_BLOW_AT_THE_TAP = 0.4;
 
 export class UnknownPointerKind extends Error {
   constructor(rawKind) {
@@ -96,7 +97,7 @@ export class PointerWind {
 
 function outwardStrengthAfterHolding(heldSeconds) {
   const shareOfRamp = Math.min(1, Math.max(0, heldSeconds / OUTWARD_BLOW_RAMP_SECONDS));
-  return shareOfRamp * shareOfRamp;
+  return OUTWARD_BLOW_AT_THE_TAP + (1 - OUTWARD_BLOW_AT_THE_TAP) * shareOfRamp * shareOfRamp;
 }
 
 function clampedPointerSpeed(uvPerSecond) {

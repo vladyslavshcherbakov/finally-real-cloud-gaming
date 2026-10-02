@@ -195,6 +195,6 @@ fn windEffect(gridPoint: vec3f) -> WindEffect {
 fn sourcePush(source: WindSourceParams, fromSource: vec2f, motion: f32) -> vec3f {
   let sweepInCells = vec2f(source.velocityU, source.velocityV) * gridSize().xy;
   let outwardInCells = normalize(vec3f(fromSource / params.canvasAspect * gridSize().xy, 0.0) + vec3f(1e-5));
-  let outwardPush = source.outwardStrength * (outwardInCells * OUTWARD_PUSH + vec3f(0.0, 0.0, INTO_SCENE_PUSH));
+  let outwardPush = source.outwardStrength * (1.0 - motion) * (outwardInCells * OUTWARD_PUSH + vec3f(0.0, 0.0, INTO_SCENE_PUSH));
   return vec3f(sweepInCells * SWEEP_PUSH, motion * INTO_SCENE_PUSH_WHILE_SWEEPING) + outwardPush;
 }

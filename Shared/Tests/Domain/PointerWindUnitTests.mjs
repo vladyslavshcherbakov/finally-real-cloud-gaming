@@ -16,13 +16,13 @@ test('wind_whenAMouseMovesWithoutAButton_blowsAlongTheMove', () => {
   assert.deepEqual([source.u, source.velocityU, source.velocityV, source.outwardStrength], [0.75, 1, 0, 0]);
 });
 
-test('wind_whenAFingerIsHeld_blowsOutwardHarderUntilFullAfterASecond', () => {
+test('wind_whenAFingerIsHeld_blowsOutwardAtOnceAndHarderUntilFullAfterASecond', () => {
   const pointerWind = new PointerWind();
 
   pointerWind.pointerPressed({ id: 7, kind: POINTER_KINDS.touch, u: 0.2, v: 0.3, timeSeconds: 10 });
 
   const strengths = [10, 10.5, 11, 12].map((nowSeconds) => sourcesAt(pointerWind, nowSeconds)[0].outwardStrength);
-  assert.deepEqual(strengths, [0, 0.25, 1, 1]);
+  assert.deepEqual(strengths, [0.4, 0.55, 1, 1]);
 });
 
 test('wind_whenTheFingerIsLifted_stops', () => {
