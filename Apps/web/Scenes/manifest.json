@@ -1,0 +1,27 @@
+{
+  "scenes": [
+    {
+      "id": "river-bridge-sunset",
+      "photo": "river-bridge-sunset/photo.jpg",
+      "depth": "river-bridge-sunset/depth.png",
+      "width": 1125,
+      "height": 2000,
+      "fovY": 63.5,
+      "nearM": 0.5,
+      "farM": 4000.0,
+      "ground": {
+        "normal": [
+          -0.02104,
+          0.99975,
+          -0.00689
+        ],
+        "offset": 1.5
+      },
+      "sunDir": [
+        0.0266,
+        0.2067,
+        0.978
+      ]
+    }
+  ]
+}
