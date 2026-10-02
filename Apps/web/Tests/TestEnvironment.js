@@ -53,7 +53,8 @@ export class TestEnvironment {
   #device;
   #clock;
 
-  constructor(graph, frameTarget, device, clock, logSink) {
+  constructor(graph, frameTarget, device, clock, logSink, messagesShown) {
+    this.messagesShown = messagesShown;
     this.#graph = graph;
     this.#clock = clock;
     this.#frameTarget = frameTarget;
@@ -67,6 +68,8 @@ export class TestEnvironment {
     const logSink = new RecordingLogSink();
     const logger = new Logger('test', { sink: logSink });
     const clock = new SteppedClock();
+    const messagesShown = [];
+    new MutationObserver(() => messagesShown.push(message.textContent)).observe(message, { childList: true, characterData: true, subtree: true });
     let frameTarget = null;
     let device = null;
     const graph = await createAppGraph({
@@ -82,7 +85,7 @@ export class TestEnvironment {
     });
     new FogScreen({ canvas, message, engine: graph.engine, pointerWind: graph.pointerWind, clock, logger }).connect();
     await graph.engine.start();
-    return new TestEnvironment(graph, frameTarget, device, clock, logSink);
+    return new TestEnvironment(graph, frameTarget, device, clock, logSink, messagesShown);
   }
 
   get problems() {

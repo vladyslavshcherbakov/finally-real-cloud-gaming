@@ -76,6 +76,10 @@ export class EnvironmentPage {
     await this.page.evaluate((count) => window.environment.advance(count), frameCount);
   }
 
+  async messagesShown() {
+    return this.page.evaluate(() => window.environment.messagesShown);
+  }
+
   async advanceSeconds(seconds) {
     await this.page.evaluate((secondsToAdvance) => window.environment.advanceSeconds(secondsToAdvance), seconds);
   }

@@ -18,5 +18,4 @@ runStep() {
   fi
 }
 
-runStep "Unit tests" node --test --test-reporter=tap Shared/Tests/*/*UnitTests.mjs Apps/web/Tests/*/*UnitTests.mjs
-runStep "Integration tests" node --test --test-reporter=tap Apps/web/Tests/*/*IntegrationTests.mjs
+runStep "Unit and integration tests" node --test --test-reporter=tap --test-concurrency=4 Shared/Tests/*/*UnitTests.mjs Apps/web/Tests/*/*UnitTests.mjs Apps/web/Tests/*/*IntegrationTests.mjs
