@@ -12,7 +12,7 @@ const SOLIDS_KERNEL = {
 const FOG_RESET_KERNEL = {
   shader: 'fog_reset',
   bindings: {
-    sceneDepth: 'texture2d', flowNoise: 'texture3d', clampSampler: 'sampler', repeatSampler: 'sampler', fogOut: VECTOR_OUT, flowOut: VECTOR_OUT,
+    flowNoise: 'texture3d', repeatSampler: 'sampler', fogOut: VECTOR_OUT, flowOut: VECTOR_OUT,
   },
 };
 const VORTICITY_KERNEL = {
@@ -51,7 +51,7 @@ const FOG_UPDATE_BINDINGS = {
 const FOG_UPDATE_KERNEL = { shader: 'fog_update', bindings: FOG_UPDATE_BINDINGS };
 const LIGHT_KERNEL = {
   shader: 'light',
-  bindings: { fog: 'texture3d', solids: 'texture3d', previousLight: 'texture3d', clampSampler: 'sampler', lightOut: VECTOR_OUT },
+  bindings: { fog: 'texture3d', windReach: 'texture3d', solids: 'texture3d', previousLight: 'texture3d', clampSampler: 'sampler', lightOut: VECTOR_OUT },
 };
 
 export const FOG_FIELD_KERNELS = [
@@ -118,8 +118,9 @@ export class FogField {
   resetFog(pass, sceneDepth) {
     this.#fogIndex = 0;
     this.#kernels.kernel(FOG_RESET_KERNEL).dispatch(pass, {
-      sceneDepth, flowNoise: this.#noise.flow, clampSampler: this.clampSampler, repeatSampler: this.repeatSampler, fogOut: this.fogTextures[0], flowOut: this.flowTextures[0],
+      flowNoise: this.#noise.flow, repeatSampler: this.repeatSampler, fogOut: this.fogTextures[0], flowOut: this.flowTextures[0],
     }, this.size);
+    this.measureWindReach(pass, sceneDepth);
   }
 
   measureWindReach(pass, sceneDepth) {
@@ -158,7 +159,7 @@ export class FogField {
 
   computeLight(pass) {
     this.#kernels.kernel(LIGHT_KERNEL).dispatch(pass, {
-      fog: this.fog, solids: this.solids, previousLight: this.light, clampSampler: this.clampSampler, lightOut: this.lightTextures[1 - this.#lightIndex],
+      fog: this.fog, windReach: this.windReach, solids: this.solids, previousLight: this.light, clampSampler: this.clampSampler, lightOut: this.lightTextures[1 - this.#lightIndex],
     }, this.size);
     this.#lightIndex = 1 - this.#lightIndex;
   }

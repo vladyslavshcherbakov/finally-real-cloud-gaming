@@ -37,7 +37,7 @@ fn main(@builtin(global_invocation_id) cellId: vec3u) {
   var density = textureLoad(advected, cellId, 0).r;
   density *= mix(1.0, shareOfPointInsideGrid(centre - displacement), movedAir);
   density += min(params.diffusion * stepSeconds(), LARGEST_STABLE_DIFFUSION_STEP) * densityLaplacian(cell);
-  let baseDensity = baseFogDensity(centre) * windReachHere.a;
+  let baseDensity = baseFogDensity(centre);
   density += (baseDensity - density) * (1.0 - exp(-params.returnRate * stepSeconds()));
   density *= exp(-wind.cleanAirRate * windReachHere.r * windReachHere.g * stepSeconds());
   density *= windReachHere.b;

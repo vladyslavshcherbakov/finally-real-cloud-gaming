@@ -12,12 +12,12 @@ fn opticalDepthToward(start: vec3f, direction: vec3f, steps: i32) -> f32 {
     let samplePoint = start + direction * (travelledMetres + stepMetres * 0.5);
     let sampleUvw = gridPosition(samplePoint) / gridSize();
     if (sampleUvw.z > 1.0 || samplePoint.z < 0.05) { break; }
-    let fogDensity = textureSampleLevel(fog, clampSampler, sampleUvw, 0.0).r;
+    let fogExtinction = textureSampleLevel(fog, clampSampler, sampleUvw, 0.0).r * textureSampleLevel(windReach, clampSampler, sampleUvw, 0.0).a;
     var solidFraction = 0.0;
     if (all(sampleUvw.xy > vec2f(0.0)) && all(sampleUvw.xy < vec2f(1.0))) {
       solidFraction = textureSampleLevel(solids, clampSampler, sampleUvw, 0.0).r;
     }
-    opticalDepth += (fogDensity + solidFraction * SOLID_EXTINCTION_PER_METRE) * stepMetres;
+    opticalDepth += (fogExtinction + solidFraction * SOLID_EXTINCTION_PER_METRE) * stepMetres;
     travelledMetres += stepMetres;
     stepMetres *= LIGHT_STEP_GROWTH;
   }

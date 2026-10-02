@@ -4,6 +4,7 @@ const SWIRL_SCALE_PER_METRE = 0.05;
 const SWIRL_OCTAVE_SCALE = 3.1;
 const SWIRL_OCTAVE_WEIGHT = 0.45;
 const SWIRL_SPEED_SCALE = 0.12;
+const NEAREST_SWIRL_METRES = 15.0;
 
 fn baseFogDensity(gridPoint: vec3f) -> f32 {
   let viewPoint = viewPosition(gridPoint);
@@ -29,5 +30,5 @@ fn swirlingAirVelocity(gridPoint: vec3f) -> vec3f {
     weight *= SWIRL_OCTAVE_WEIGHT;
   }
   let airMetresPerSecond = windDrift() + curl * params.turbulenceMetresPerSecond * SWIRL_SPEED_SCALE;
-  return viewVelocityInCells(airMetresPerSecond, viewPoint.z);
+  return viewVelocityInCells(airMetresPerSecond, max(viewPoint.z, NEAREST_SWIRL_METRES));
 }

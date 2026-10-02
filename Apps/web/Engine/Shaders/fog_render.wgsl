@@ -114,13 +114,11 @@ fn fogAlongRay(ray: ViewRay) -> FogLight {
     let middleMetres = 0.5 * (nearMetres + farMetres);
     let sampleUvw = vec3f(ray.canvasUv, max(sliceAtDepth(middleMetres), 0.5) / params.gridDepth);
     let fogCell = textureSampleLevel(fog, clampSampler, sampleUvw, 0.0);
-    let openingExtinctionPerBaseFog = max(textureSampleLevel(windReach, clampSampler, sampleUvw, 0.0).a, 1e-6);
-    let baseFog = fogCell.r / openingExtinctionPerBaseFog;
-    if (baseFog < FAINTEST_FOG) { continue; }
+    if (fogCell.r < FAINTEST_FOG) { continue; }
     let viewPoint = ray.direction * middleMetres * ray.metresPerDepthMetre;
     let secondPhaseOffset = textureSampleLevel(flow, clampSampler, sampleUvw, 0.0).xyz;
-    let extinction = densityWithDetail(baseFog, detailNoiseAt(viewPoint, middleMetres, fogCell.yzw, secondPhaseOffset))
-      * openingExtinctionPerBaseFog;
+    let extinction = densityWithDetail(fogCell.r, detailNoiseAt(viewPoint, middleMetres, fogCell.yzw, secondPhaseOffset))
+      * textureSampleLevel(windReach, clampSampler, sampleUvw, 0.0).a;
     let segmentTransmittance = exp(-extinction * (farMetres - nearMetres) * ray.metresPerDepthMetre);
     fogLight.scattered += fogLight.transmittance * lightReachingFog(ray, viewPoint, sampleUvw) * (1.0 - segmentTransmittance);
     fogLight.transmittance *= segmentTransmittance;
@@ -132,7 +130,7 @@ fn fogAlongRay(ray: ViewRay) -> FogLight {
 fn withHazeBeyondTheGrid(ray: ViewRay, fogLight: FogLight) -> FogLight {
   if (ray.surfaceDepthMetres <= params.farSliceMetres || fogLight.transmittance < OPAQUE_TRANSMITTANCE) { return fogLight; }
   let lastSliceUvw = vec3f(ray.canvasUv, 1.0 - 0.5 / params.gridDepth);
-  let hazeExtinction = textureSampleLevel(fog, clampSampler, lastSliceUvw, 0.0).r * 0.5;
+  let hazeExtinction = textureSampleLevel(fog, clampSampler, lastSliceUvw, 0.0).r * textureSampleLevel(windReach, clampSampler, lastSliceUvw, 0.0).a * 0.5;
   let hazeMetres = min(ray.surfaceDepthMetres, params.farSliceMetres * HAZE_REACH_IN_FOG_DEPTHS) - params.farSliceMetres;
   let hazeTransmittance = exp(-hazeExtinction * hazeMetres * ray.metresPerDepthMetre);
   let hazeOpticalDepthToSun = textureSampleLevel(light, clampSampler, lastSliceUvw, 0.0).r;
