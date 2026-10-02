@@ -22,6 +22,7 @@ const VORTEX_LEAN_SECONDS_OF_DRIFT = 1.5;
 const LONGEST_VORTEX_LEAN_IN_RADII = 2;
 const POINTER_WIND_SHARE_WHILE_SPINNING_A_VORTEX = 0.25;
 const PRESSED_VORTEX_SHARE_OF_STRENGTH = 1.5;
+const SMALLEST_VORTEX_RADIUS = 0.08;
 
 export class UnknownPointerKind extends Error {
   constructor(rawKind) {
@@ -155,7 +156,7 @@ export class PointerWind {
       Object.assign(vortexState, {
         u: drawnCircle.u,
         v: drawnCircle.v,
-        radius: drawnCircle.radius,
+        radius: Math.max(drawnCircle.radius, SMALLEST_VORTEX_RADIUS),
         spin: drawnCircle.spin,
         strengthShare: vortexStrengthShareInPhase(pointer.phase),
         growth: Math.min(1, (nowSeconds - vortexState.startedAtSeconds) / VORTEX_SECONDS_TO_FULL_GROWTH),

@@ -244,6 +244,23 @@ test('vortex_whenAMouseCirclesWithoutAButton_spinsAsStronglyAsAPressedPointerBlo
   assert.ok(hoveringVortex.strength >= pressedSource.strength, `vortex without a button ${hoveringVortex.strength}, pressed pointer wind ${pressedSource.strength}`);
 });
 
+test('vortex_whenAMouseCirclesASmallOvalOnceASecond_starts', () => {
+  const pointerWind = new PointerWind();
+
+  const endSeconds = oval(pointerWind, { radiusU: 0.03, radiusV: 0.015, secondsPerTurn: 1, turns: TURNS_TO_START_A_VORTEX + 0.5 });
+
+  assert.equal(pointerWind.vortices({ nowSeconds: endSeconds, strength: 1 }).length, 1);
+});
+
+test('vortex_fromASmallCircle_isWiderThanTheCircle', () => {
+  const pointerWind = new PointerWind();
+
+  const endSeconds = oval(pointerWind, { radiusU: 0.02, radiusV: 0.02, secondsPerTurn: 1, turns: TURNS_TO_START_A_VORTEX + 0.5 });
+
+  const [vortex] = pointerWind.vortices({ nowSeconds: endSeconds, strength: 1 });
+  assert.ok(vortex.radius > 0.02, `vortex radius ${vortex.radius} for a circle of 0.02`);
+});
+
 test('pointerKind_whenTheBrowserReportsAnUnknownKind_failsNamingIt', () => {
   assert.throws(() => pointerKind('stylus'), (error) => error instanceof UnknownPointerKind && error.rawKind === 'stylus');
 });
@@ -265,4 +282,15 @@ function vorticesAfterFrames(pointerWind, { fromSeconds, seconds }) {
   let vortices = [];
   for (let frame = 1; frame <= seconds * 60; frame++) vortices = pointerWind.vortices({ nowSeconds: fromSeconds + frame / 60, strength: 1 });
   return vortices;
+}
+
+function oval(pointerWind, { radiusU, radiusV, secondsPerTurn, turns }) {
+  const movesPerTurn = 120;
+  let timeSeconds = 0;
+  for (let move = 1; move <= Math.round(turns * movesPerTurn); move++) {
+    timeSeconds = (move / movesPerTurn) * secondsPerTurn;
+    const angle = (move / movesPerTurn) * 2 * Math.PI;
+    pointerWind.pointerMoved({ id: 1, kind: POINTER_KINDS.mouse, u: CIRCLE.centreU + radiusU * Math.cos(angle), v: CIRCLE.centreV + radiusV * Math.sin(angle), timeSeconds });
+  }
+  return timeSeconds;
 }
