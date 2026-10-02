@@ -13,7 +13,6 @@ export class CurlNoiseSolver {
   static label = 'Curl noise';
   static description = 'Kinematic, divergence-free procedural flow plus fading impulses. No pressure solve.';
   static kernels = [CURL_NOISE_FLOW_KERNEL];
-  static advectsFogSharply = false;
 
   #kernels;
   #field;

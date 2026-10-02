@@ -23,7 +23,7 @@ The only platform is the browser. `Apps/web` has one page, `index.html`.
 - `Apps/web/Scenes/` holds the photos, the depth maps and `manifest.json`.
 
 Add a solver in these steps:
-1. Add a class in `Apps/web/Engine/Solvers/` with `id`, `label`, `description`, `kernels`, `advectsFogSharply`, `particleCount`, `solverParams`, `reset`, `step` and `destroy`. `kernels` lists every kernel spec the solver dispatches, so they compile before its first frame. `advectsFogSharply` makes the fog move with MacCormack advection instead of semi-Lagrangian advection.
+1. Add a class in `Apps/web/Engine/Solvers/` with `id`, `label`, `description`, `kernels`, `particleCount`, `solverParams`, `reset`, `step` and `destroy`. `kernels` lists every kernel spec the solver dispatches, so they compile before its first frame.
 2. Add its shaders to `Apps/web/Engine/Shaders/`.
 3. Add the class to `SOLVERS` in `Apps/web/Engine/Solvers.js`.
 4. Add any new uniform values to `PARAM_FIELDS` in `Apps/web/Engine/Gpu/ParamsBuffer.js`.

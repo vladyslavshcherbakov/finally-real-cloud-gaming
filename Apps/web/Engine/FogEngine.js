@@ -298,7 +298,7 @@ export class FogEngine {
     const pass = encoder.beginComputePass({ label: 'simulation', timestampWrites: isTimed ? this.#timer.startWrites : undefined });
     this.#field.measureWindReach(pass, this.#scene.depthCodes);
     this.#solver.step(pass);
-    this.#field.transportFog(pass, this.#solver.constructor.advectsFogSharply);
+    this.#field.transportFog(pass);
     if (this.#frameIndex % LIGHT_UPDATE_EVERY_FRAMES === 0) {
       this.#field.computeLight(pass);
       this.#secondsSinceLight = 0;

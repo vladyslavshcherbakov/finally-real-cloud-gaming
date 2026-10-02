@@ -1,21 +1,22 @@
-const VELOCITY_UPDATE_BINDINGS = {
-  velocity: 'texture3d', advected: 'texture3d', acceleration: 'texture3d', solids: 'texture3d',
-  clampSampler: 'sampler', velocityOut: 'write3d:rgba16float',
-};
-const VELOCITY_UPDATE_KERNELS = {
-  semiLagrangian: { shader: 'velocity_update', bindings: VELOCITY_UPDATE_BINDINGS, constants: { USE_MACCORMACK: false } },
-  macCormack: { shader: 'velocity_update', bindings: VELOCITY_UPDATE_BINDINGS, constants: { USE_MACCORMACK: true } },
+const VELOCITY_UPDATE_KERNEL = {
+  shader: 'velocity_update',
+  bindings: {
+    advected: 'texture3d', acceleration: 'texture3d', solids: 'texture3d', velocityOut: 'write3d:rgba16float',
+  },
 };
 
-class GridFluidSolver {
+export class StableFluidsSolver {
+  static id = 'stable';
+  static label = 'Stable Fluids';
+  static description = 'Semi-Lagrangian advection, vorticity confinement, pressure projection.';
+  static kernels = [VELOCITY_UPDATE_KERNEL];
+
   #kernels;
   #field;
-  #velocityUpdateKernel;
 
-  constructor({ kernels, field }, velocityUpdateKernel) {
+  constructor({ kernels, field }) {
     this.#kernels = kernels;
     this.#field = field;
-    this.#velocityUpdateKernel = velocityUpdateKernel;
   }
 
   get particleCount() {
@@ -35,37 +36,12 @@ class GridFluidSolver {
     const [velocity, advectedVelocity, acceleratedVelocity] = field.velocities;
     field.computeAcceleration(pass, velocity);
     field.advect(pass, velocity, velocity, advectedVelocity);
-    this.#kernels.kernel(this.#velocityUpdateKernel).dispatch(pass, {
-      velocity, advected: advectedVelocity, acceleration: field.acceleration, solids: field.solids,
-      clampSampler: field.clampSampler, velocityOut: acceleratedVelocity,
+    this.#kernels.kernel(VELOCITY_UPDATE_KERNEL).dispatch(pass, {
+      advected: advectedVelocity, acceleration: field.acceleration, solids: field.solids, velocityOut: acceleratedVelocity,
     }, field.size);
     field.makeDivergenceFree(pass, acceleratedVelocity, velocity);
     field.velocity = velocity;
   }
 
   destroy() {}
-}
-
-export class MacCormackSolver extends GridFluidSolver {
-  static id = 'maccormack';
-  static label = 'MacCormack';
-  static description = 'Stable Fluids with second-order MacCormack advection of the air and the fog: less blur, longer-lived curls.';
-  static kernels = [VELOCITY_UPDATE_KERNELS.macCormack];
-  static advectsFogSharply = true;
-
-  constructor(dependencies) {
-    super(dependencies, VELOCITY_UPDATE_KERNELS.macCormack);
-  }
-}
-
-export class StableFluidsSolver extends GridFluidSolver {
-  static id = 'stable';
-  static label = 'Stable Fluids';
-  static description = 'Semi-Lagrangian advection, vorticity confinement, pressure projection.';
-  static kernels = [VELOCITY_UPDATE_KERNELS.semiLagrangian];
-  static advectsFogSharply = false;
-
-  constructor(dependencies) {
-    super(dependencies, VELOCITY_UPDATE_KERNELS.semiLagrangian);
-  }
 }
