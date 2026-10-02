@@ -3,7 +3,7 @@ import { LINEAR_WORKGROUP } from '../Gpu/Kernel.js';
 import { ParticleBuffer, particleKernels } from './ParticleBuffer.js';
 
 const MOST_PARTICLES = 3_000_000;
-const FLIP_RATIO = 0.95;
+const FLIP_RATIO = 0.8;
 const RESPAWN_FRACTION_PER_STEP = 0.004;
 const SUMS_PER_CELL_BYTES = 16;
 
@@ -32,7 +32,7 @@ const GRID_TO_PARTICLES_KERNEL = {
 export class FlipSolver {
   static id = 'flip';
   static label = 'FLIP particles';
-  static description = 'Particles carry velocity between steps (95% FLIP, 5% PIC), the grid does the pressure.';
+  static description = 'Particles carry velocity between steps (80% FLIP, 20% PIC), the grid does the pressure.';
   static kernels = [...Object.values(particleKernels(VEC4S_PER_PARTICLE)), PARTICLES_TO_GRID_KERNEL, GRID_UPDATE_KERNEL, GRID_TO_PARTICLES_KERNEL];
 
   #kernels;

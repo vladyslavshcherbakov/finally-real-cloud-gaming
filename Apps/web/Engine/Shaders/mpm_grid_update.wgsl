@@ -1,18 +1,13 @@
 //#include mpm_particle
 
 const SMALLEST_NODE_MASS = 1e-4;
-const WALL_CELLS = 2u;
+const ABSORBING_EDGE_CELLS = 3u;
+const VELOCITY_KEPT_PER_SUBSTEP_AT_THE_EDGE = 0.6;
 
-fn withWallsHeld(nodeVelocity: vec3f, cellId: vec3u) -> vec3f {
+fn withEdgesAbsorbing(nodeVelocity: vec3f, cellId: vec3u) -> vec3f {
   let size = vec3u(gridSize());
-  var heldVelocity = nodeVelocity;
-  if (cellId.x < WALL_CELLS) { heldVelocity.x = max(heldVelocity.x, 0.0); }
-  if (cellId.x >= size.x - WALL_CELLS) { heldVelocity.x = min(heldVelocity.x, 0.0); }
-  if (cellId.y < WALL_CELLS) { heldVelocity.y = max(heldVelocity.y, 0.0); }
-  if (cellId.y >= size.y - WALL_CELLS) { heldVelocity.y = min(heldVelocity.y, 0.0); }
-  if (cellId.z < WALL_CELLS) { heldVelocity.z = max(heldVelocity.z, 0.0); }
-  if (cellId.z >= size.z - WALL_CELLS) { heldVelocity.z = min(heldVelocity.z, 0.0); }
-  return heldVelocity;
+  let isAtEdge = any(cellId < vec3u(ABSORBING_EDGE_CELLS)) || any(cellId + ABSORBING_EDGE_CELLS >= size);
+  return select(nodeVelocity, nodeVelocity * VELOCITY_KEPT_PER_SUBSTEP_AT_THE_EDGE, isAtEdge);
 }
 
 @compute @workgroup_size(WORKGROUP_SIZE_X, WORKGROUP_SIZE_Y, WORKGROUP_SIZE_Z)
@@ -27,5 +22,5 @@ fn main(@builtin(global_invocation_id) cellId: vec3u) {
   }
   gridSums[firstSum] = 0; gridSums[firstSum + 1u] = 0; gridSums[firstSum + 2u] = 0; gridSums[firstSum + 3u] = 0;
   if (textureLoad(solids, cellId, 0).r > 0.5) { nodeVelocity = vec3f(0.0); }
-  textureStore(velocityOut, cellId, vec4f(withWallsHeld(nodeVelocity, cellId), 0.0));
+  textureStore(velocityOut, cellId, vec4f(withEdgesAbsorbing(nodeVelocity, cellId), 0.0));
 }
