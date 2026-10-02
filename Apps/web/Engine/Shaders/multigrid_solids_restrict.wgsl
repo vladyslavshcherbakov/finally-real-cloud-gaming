@@ -1,6 +1,6 @@
 //#include multigrid_level_pair
 
-const SOLID_CHILDREN_FOR_A_SOLID_PARENT = 3.0;
+const SOLID_CHILDREN_FOR_A_SOLID_PARENT = 4.0;
 
 @compute @workgroup_size(WORKGROUP_SIZE_X, WORKGROUP_SIZE_Y, WORKGROUP_SIZE_Z)
 fn main(@builtin(global_invocation_id) coarseCellId: vec3u) {
