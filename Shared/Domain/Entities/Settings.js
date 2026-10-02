@@ -10,7 +10,7 @@ export const NUMERIC_SETTINGS = [
   { key: 'windStrength', defaultValue: 1, min: 0, max: 4 },
   { key: 'windRadius', defaultValue: 0.15, min: 0.02, max: 0.3 },
   { key: 'wakeMixing', defaultValue: 1.5, min: 0, max: 10 },
-  { key: 'turbulence', defaultValue: 0.7, min: 0, max: 3 },
+  { key: 'turbulence', defaultValue: 0, min: 0, max: 3 },
   { key: 'drift', defaultValue: 0, min: -2, max: 2 },
   { key: 'vorticity', defaultValue: 1.2, min: 0, max: 6 },
   { key: 'damping', defaultValue: 0.25, min: 0, max: 2 },
