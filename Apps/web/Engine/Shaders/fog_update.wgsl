@@ -9,6 +9,11 @@ fn neighbourDensity(neighbour: vec3i, ownDensity: f32) -> f32 {
   return textureLoad(fog, cell, 0).r;
 }
 
+fn fogJustInFront(cell: vec3i) -> f32 {
+  if (cell.z == 0) { return 0.0; }
+  return textureLoad(fog, cell - vec3i(0, 0, 1), 0).r;
+}
+
 fn shareOfPointInsideGrid(point: vec3f) -> f32 {
   let distanceBeyondGrid = max(max(-point, point - gridSize()), vec3f(0.0));
   return clamp(1.0 - max(distanceBeyondGrid.x, max(distanceBeyondGrid.y, distanceBeyondGrid.z)), 0.0, 1.0);
@@ -43,7 +48,7 @@ fn main(@builtin(global_invocation_id) cellId: vec3u) {
   let baseDensity = baseFogDensity(centre);
   density += (baseDensity - density) * (1.0 - exp(-params.returnRate * stepSeconds()));
   density *= exp(-wind.cleanAirRate * windReachHere.r * windReachHere.g * stepSeconds());
-  density *= windReachHere.b;
+  if (windReachHere.b < 0.5) { density = fogJustInFront(cell); }
 
   var firstPhaseOffset = textureSampleLevel(fog, clampSampler, departureUvw, 0.0).yzw + displacement;
   var secondPhaseOffset = textureSampleLevel(flow, clampSampler, departureUvw, 0.0).xyz + displacement;

@@ -19,7 +19,8 @@
 - A deep column of fog, such as the sky, clears in about as many swipes as a short one in front of a near roof.
 - The fog does not grow back. Fog that the wind pushes past the edge of the screen or into the distance is gone for good.
 - Fog that stays on the screen keeps swirling and creeps into clear air. It does not creep behind surfaces, so still fog keeps its amount.
-- Fog lives only in front of the surfaces of the photo. Fog that drifts behind a building, into a wall or under the ground is gone, so no fog hides where the wind cannot reach.
+- Fog lives only in front of the surfaces of the photo. Behind a surface each cell only repeats the fog just in front of it, so fog that swirls against a building is neither lost nor kept hidden where the wind cannot reach.
+- Without wind the fog never thins by itself.
 - Air that the wind set moving opens the edge of the screen it reaches, for about two seconds after the wind stops. Fog it carries out does not flow back in. Elsewhere the air beyond the edge is like the air at the edge.
 - The "Return speed" setting makes the fog flow back to its base state. It is off by default.
 
