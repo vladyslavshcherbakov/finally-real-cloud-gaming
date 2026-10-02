@@ -197,6 +197,42 @@ test('wind_whilePointerSpinsAVortex_blowsWeakerItselfThanBeforeTheVortex', () =>
     `pointer wind before the vortex ${sourceBeforeTheVortex.strength}, while spinning it ${sourceWhileSpinning.strength}`);
 });
 
+test('vortex_whenAMouseCirclesUnevenlyInTinySteps_stillStarts', () => {
+  const pointerWind = new PointerWind();
+  const movesPerTurn = 400;
+  const turnCount = TURNS_TO_START_A_VORTEX + 0.5;
+  let timeSeconds = 0;
+  for (let move = 1; move <= turnCount * movesPerTurn; move++) {
+    timeSeconds = (move / movesPerTurn) * CIRCLE.secondsPerTurn;
+    const angle = (move / movesPerTurn) * 2 * Math.PI;
+    const wobble = 1 + 0.15 * Math.sin(angle * 3) + 0.01 * Math.sin(move * 2.3);
+    pointerWind.pointerMoved({
+      id: 1, kind: POINTER_KINDS.mouse, u: CIRCLE.centreU + CIRCLE.radius * wobble * Math.cos(angle), v: CIRCLE.centreV + CIRCLE.radius * wobble * Math.sin(angle), timeSeconds,
+    });
+  }
+
+  assert.equal(pointerWind.vortices({ nowSeconds: timeSeconds, strength: 1 }).length, 1);
+});
+
+test('vortex_whenSpunLonger_growsFurther', () => {
+  const growths = [0.5, 3].map((extraTurns) => {
+    const pointerWind = new PointerWind();
+    pointerWind.pointerPressed({ id: 7, kind: POINTER_KINDS.touch, u: CIRCLE.centreU + CIRCLE.radius, v: CIRCLE.centreV, timeSeconds: 0 });
+    let vortices = [];
+    let timeSeconds = 0;
+    const moveCount = Math.round((TURNS_TO_START_A_VORTEX + extraTurns) * CIRCLE.movesPerTurn);
+    for (let move = 1; move <= moveCount; move++) {
+      timeSeconds = (move / CIRCLE.movesPerTurn) * CIRCLE.secondsPerTurn;
+      const angle = (move / CIRCLE.movesPerTurn) * 2 * Math.PI;
+      pointerWind.pointerMoved({ id: 7, kind: POINTER_KINDS.touch, u: CIRCLE.centreU + CIRCLE.radius * Math.cos(angle), v: CIRCLE.centreV + CIRCLE.radius * Math.sin(angle), timeSeconds });
+      vortices = pointerWind.vortices({ nowSeconds: timeSeconds, strength: 1 });
+    }
+    return vortices[0].growth;
+  });
+
+  assert.ok(growths[0] < growths[1], `growth after a short spin ${growths[0]}, after a long one ${growths[1]}`);
+});
+
 test('pointerKind_whenTheBrowserReportsAnUnknownKind_failsNamingIt', () => {
   assert.throws(() => pointerKind('stylus'), (error) => error instanceof UnknownPointerKind && error.rawKind === 'stylus');
 });

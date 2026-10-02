@@ -29,7 +29,7 @@ const WIND_SOURCES = {
 };
 const VORTICES = {
   structName: 'VortexParams', arrayName: 'vortices', countParam: 'vortexCount',
-  fields: ['u', 'v', 'radius', 'spin', 'strength', 'leanU', 'leanV'], maxCount: 4,
+  fields: ['u', 'v', 'radius', 'spin', 'strength', 'leanU', 'leanV', 'growth'], maxCount: 4,
 };
 const PARAM_ARRAYS = [WIND_SOURCES, VORTICES];
 

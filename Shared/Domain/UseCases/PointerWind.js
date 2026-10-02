@@ -16,7 +16,8 @@ const SHORTEST_MOVE_SECONDS = 1 / 240;
 const PUFF_AFTER_RELEASE_SECONDS = 0.5;
 const DRAG_UV_THAT_ENDS_A_TAP = 0.05;
 const HOVERING_SHARE_OF_STRENGTH = 1 / 3;
-const VORTEX_FADE_SECONDS = 2;
+const VORTEX_FADE_SECONDS = 4;
+const VORTEX_SECONDS_TO_FULL_GROWTH = 4;
 const VORTEX_LEAN_SECONDS_OF_DRIFT = 1.5;
 const LONGEST_VORTEX_LEAN_IN_RADII = 2;
 const POINTER_WIND_SHARE_WHILE_SPINNING_A_VORTEX = 0.25;
@@ -122,6 +123,7 @@ export class PointerWind {
       strength: strength * vortexState.strengthShare * fadeShare(vortexState, nowSeconds),
       leanU: vortexState.leanU,
       leanV: vortexState.leanV,
+      growth: vortexState.growth,
     }));
   }
 
@@ -146,7 +148,7 @@ export class PointerWind {
       let vortexState = this.#vortexStates.find((state) => state.phase === SPINNING && state.pointerId === id);
       if (vortexState === undefined) {
         if (drawnCircle.turns < TURNS_TO_START_A_VORTEX) continue;
-        vortexState = { pointerId: id, phase: SPINNING };
+        vortexState = { pointerId: id, phase: SPINNING, startedAtSeconds: nowSeconds };
         this.#vortexStates.push(vortexState);
       }
       Object.assign(vortexState, {
@@ -155,6 +157,7 @@ export class PointerWind {
         radius: drawnCircle.radius,
         spin: drawnCircle.spin,
         strengthShare: strengthShareInPhase(pointer.phase),
+        growth: Math.min(1, (nowSeconds - vortexState.startedAtSeconds) / VORTEX_SECONDS_TO_FULL_GROWTH),
         ...vortexLean(drawnCircle),
       });
     }

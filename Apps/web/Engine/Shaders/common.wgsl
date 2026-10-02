@@ -177,11 +177,12 @@ const INTO_SCENE_PUSH = 6.0;
 const POINTER_SPEED_FOR_FULL_CLEANING = 0.4;
 const WIND_REACH_IN_RADII_SQUARED = 9.0;
 const VORTEX_TURNS_PER_SECOND_AT_THE_EYE_WALL = 1.0;
-const VORTEX_INWARD_SHARE_OF_THE_SPIN = 0.35;
+const VORTEX_INWARD_SHARE_OF_THE_SPIN = 0.6;
 const VORTEX_SPIN_UP_PER_SECOND = 1.0;
-const VORTEX_REACH_IN_RADII = 3.0;
-const VORTEX_EYE_SHARE_OF_RADIUS = 0.35;
-const VORTEX_EYE_INTO_SCENE_PUSH = 10.0;
+const VORTEX_REACH_IN_RADII_AT_THE_START = 3.0;
+const VORTEX_REACH_IN_RADII_FULLY_GROWN = 10.0;
+const VORTEX_EYE_SHARE_OF_RADIUS = 0.5;
+const VORTEX_EYE_INTO_SCENE_PUSH = 20.0;
 
 fn windEffect(gridPoint: vec3f) -> WindEffect {
   var effect = WindEffect(vec3f(0.0), 0.0, vec3f(0.0), 0.0);
@@ -210,10 +211,11 @@ fn vortexEffect(vortex: VortexParams, gridPoint: vec3f) -> WindEffect {
   let centreAtThisDepth = vec2f(vortex.u, vortex.v) + vec2f(vortex.leanU, vortex.leanV) * gridPoint.z / gridSize().z;
   let fromCentre = (gridPoint.xy / gridSize().xy - centreAtThisDepth) * vec2f(params.canvasAspect, 1.0);
   let radii = length(fromCentre) / vortex.radius;
-  if (radii > VORTEX_REACH_IN_RADII) { return WindEffect(vec3f(0.0), 0.0, vec3f(0.0), 0.0); }
+  let reachInRadii = mix(VORTEX_REACH_IN_RADII_AT_THE_START, VORTEX_REACH_IN_RADII_FULLY_GROWN, vortex.growth);
+  if (radii > reachInRadii) { return WindEffect(vec3f(0.0), 0.0, vec3f(0.0), 0.0); }
   let outward = fromCentre / max(length(fromCentre), 1e-5);
   let alongTheSpin = vec2f(-outward.y, outward.x) * vortex.spin;
-  let shareOfTheEyeWallSpeed = 2.0 * radii / (1.0 + radii * radii) * (1.0 - smoothstep(VORTEX_REACH_IN_RADII - 1.0, VORTEX_REACH_IN_RADII, radii));
+  let shareOfTheEyeWallSpeed = 2.0 * radii / (1.0 + radii * radii) * (1.0 - smoothstep(reachInRadii - 1.0, reachInRadii, radii));
   let eyeWallSpeed = 2.0 * PI * VORTEX_TURNS_PER_SECOND_AT_THE_EYE_WALL * vortex.radius;
   let screenAcceleration = (alongTheSpin - outward * VORTEX_INWARD_SHARE_OF_THE_SPIN)
     * eyeWallSpeed * shareOfTheEyeWallSpeed * vortex.strength * VORTEX_SPIN_UP_PER_SECOND;
