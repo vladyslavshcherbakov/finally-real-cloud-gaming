@@ -1,0 +1,39 @@
+.photo-probe-button {
+  position: fixed;
+  left: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  padding: 8px 12px;
+  border: 1px solid var(--control-border);
+  border-radius: 8px;
+  background: var(--panel-background);
+  color: var(--panel-text);
+  font: inherit;
+}
+.photo-probe-panel {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+  max-height: 60%;
+  overflow: auto;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--panel-background);
+  -webkit-user-select: text;
+  user-select: text;
+}
+.photo-probe-panel pre {
+  margin: 0 0 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: 12px/1.4 ui-monospace, Menlo, monospace;
+}
+.photo-probe-action {
+  margin-right: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--control-border);
+  border-radius: 8px;
+  background: var(--control-background);
+  color: var(--panel-text);
+  font: inherit;
+}

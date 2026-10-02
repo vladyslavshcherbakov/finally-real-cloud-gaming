@@ -3,6 +3,7 @@ import { CanvasFrameTarget } from '../Engine/Gpu/CanvasFrameTarget.js';
 import { FogScreen } from '../Features/Fog/FogScreen.js';
 import { AnimationFrameLoop } from '../Features/Fog/AnimationFrameLoop.js';
 import { SettingsPanel } from '../Features/Settings/SettingsPanel.js';
+import { PhotoProbePanel } from '../Features/PhotoProbe/PhotoProbePanel.js';
 import { Logger } from '../../../Shared/Logging/Logger.js';
 
 const FRESH_FILES_WORKER_URL = new URL('../freshFilesWorker.js', import.meta.url);
@@ -14,6 +15,7 @@ async function start() {
   const canvas = document.querySelector('canvas');
   const message = document.querySelector('.message');
   registerFreshFilesWorker(logger.forArea('files'));
+  mountPhotoProbeOnIPhone(logger.forArea('photo-probe'));
   try {
     const graph = await createAppGraph({
       createFrameTarget: (gpuDevice) => new CanvasFrameTarget(gpuDevice, canvas),
@@ -34,6 +36,12 @@ async function start() {
     message.textContent = `${error.message}. ${WEBGPU_HINT}`;
     message.hidden = false;
   }
+}
+
+function mountPhotoProbeOnIPhone(logger) {
+  if (!/iPhone/.test(navigator.userAgent)) return;
+  new PhotoProbePanel({ logger }).mount(document.body);
+  logger.info('photo probe shown: the browser runs on an iPhone');
 }
 
 async function registerFreshFilesWorker(logger) {

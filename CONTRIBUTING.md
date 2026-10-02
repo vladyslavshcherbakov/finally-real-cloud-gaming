@@ -20,6 +20,7 @@ The only platform is the browser. `Apps/web` has one page, `index.html`.
 - `Apps/web/Engine/Solvers/` holds one class per fluid solver.
 - `Apps/web/Engine/Shaders/` holds the WGSL code. `common.wgsl` is added to every shader.
 - `Apps/web/Features/Fog/` is the game screen. `Apps/web/Features/Settings/` is the settings panel.
+- `Apps/web/Features/PhotoProbe/` is a developer tool shown only in a browser on an iPhone. It reports what a photo picked from the phone holds: its container, its auxiliary images such as a depth map, and its EXIF. It shows whether the file has a location, never the location. `Shared/Storage/Mappers/PhotoFileMapper.js` reads the file.
 - `Apps/web/Scenes/` holds the photos, the depth maps and `manifest.json`.
 
 Add a solver in these steps:
