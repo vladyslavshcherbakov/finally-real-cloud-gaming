@@ -9,7 +9,7 @@ export const NUMERIC_SETTINGS = [
   { key: 'diffusion', group: 'Fog', label: 'Creep in', defaultValue: 0.08, min: 0, max: 2, step: 0.01 },
   { key: 'windStrength', group: 'Wind', label: 'Strength', defaultValue: 1, min: 0, max: 4, step: 0.05 },
   { key: 'windRadius', group: 'Wind', label: 'Radius', defaultValue: 0.15, min: 0.02, max: 0.3, step: 0.005 },
-  { key: 'cleanAirRate', group: 'Wind', label: 'Clean air', defaultValue: 25, min: 0, max: 60, step: 0.1 },
+  { key: 'wakeMixing', group: 'Wind', label: 'Mixing', defaultValue: 2.5, min: 0, max: 10, step: 0.05 },
   { key: 'turbulence', group: 'Wind', label: 'Turbulence (m/s)', defaultValue: 0.7, min: 0, max: 3, step: 0.05 },
   { key: 'drift', group: 'Wind', label: 'Drift (m/s)', defaultValue: 0, min: -2, max: 2, step: 0.05 },
   { key: 'vorticity', group: 'Wind', label: 'Vorticity', defaultValue: 1.2, min: 0, max: 6, step: 0.05 },

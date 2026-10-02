@@ -14,7 +14,8 @@
 - A pressed mouse button or a finger on the screen also blows outward from that point, and away into the scene.
 - The blow starts faint and grows to full strength over one second of holding.
 - When the wind stops, the air settles back into its slow swirl within a fraction of a second, so it does not carry fog back into the cleared spot.
-- The wind pushes the fog along the move and brings clean air, so the photo shows through.
+- The wind carries the fog along the move and a little away into the scene. Fog it carries past the edge of the screen or into the distance is gone.
+- Air the wind set moving mixes clean air into the fog it carries for about two seconds, wherever that air flows. Each pass over a spot thins it by about the same amount, however fast the pass.
 - In every part of the view, the wind reaches the air in front of the surface there, up to the sky.
 - The fog nearest the viewer shields the fog behind it from the wind, so the view opens layer by layer.
 - A deep column of fog, such as the sky, clears in about as many swipes as a short one in front of a near roof.

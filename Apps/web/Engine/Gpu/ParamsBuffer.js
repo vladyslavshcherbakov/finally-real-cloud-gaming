@@ -13,7 +13,7 @@ export const PARAM_FIELDS = [
   'openingOpticalDepth', 'heightFalloffMetres', 'baseSmog', 'clumps',
   'returnRate', 'diffusion', 'vorticityConfinement', 'damping',
   'detailAmount', 'detailScalePerMetre', 'detailFlowPeriodSeconds', 'erosion',
-  'windSourceCount', 'windStrength', 'windRadius', 'cleanAirRate',
+  'windSourceCount', 'windStrength', 'windRadius', 'wakeMixing',
   'forwardScattering', 'multipleScattering', 'samplesPerSlice', 'debugView',
   'flipRatio',
   'respawnFractionPerStep', 'mpmSubstepSeconds', 'bulkStiffness', 'particlesPerCell',

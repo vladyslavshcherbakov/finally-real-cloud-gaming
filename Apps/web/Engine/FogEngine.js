@@ -276,7 +276,7 @@ export class FogEngine {
       openingOpticalDepth: settings.fogThickness, heightFalloffMetres: settings.heightFalloff, baseSmog: settings.baseSmog, clumps: settings.clumps,
       returnRate: settings.returnRate, diffusion: settings.diffusion, vorticityConfinement: settings.vorticity, damping: settings.damping,
       detailAmount: settings.detail, detailScalePerMetre: settings.detailScale, detailFlowPeriodSeconds: settings.detailFlowPeriod, erosion: settings.erosion,
-      windStrength: settings.windStrength, windRadius: settings.windRadius, cleanAirRate: settings.cleanAirRate,
+      windStrength: settings.windStrength, windRadius: settings.windRadius, wakeMixing: settings.wakeMixing,
       forwardScattering: settings.forwardScattering, multipleScattering: settings.multipleScattering,
       samplesPerSlice: QUALITY_PRESETS[this.#settings.values.quality].samplesPerSlice, debugView: DEBUG_VIEWS.indexOf(settings.view),
       ...this.#solver.solverParams(frameTime),

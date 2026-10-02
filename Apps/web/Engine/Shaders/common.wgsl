@@ -165,18 +165,18 @@ fn remap(value: f32, fromLow: f32, fromHigh: f32, toLow: f32, toHigh: f32) -> f3
 
 struct WindEffect {
   acceleration: vec3f,
-  cleanAirRate: f32,
   movedAirShare: f32,
 }
 
-const SWEEP_PUSH = 4.0;
+const SWEEP_PUSH = 8.0;
+const INTO_SCENE_PUSH_WHILE_SWEEPING = 3.0;
 const OUTWARD_PUSH = 15.0;
 const INTO_SCENE_PUSH = 6.0;
 const POINTER_SPEED_FOR_FULL_CLEANING = 0.4;
 const WIND_REACH_IN_RADII_SQUARED = 9.0;
 
 fn windEffect(gridPoint: vec3f) -> WindEffect {
-  var effect = WindEffect(vec3f(0.0), 0.0, 0.0);
+  var effect = WindEffect(vec3f(0.0), 0.0);
   let canvasUv = gridPoint.xy / gridSize().xy;
   for (var i = 0; i < i32(params.windSourceCount); i++) {
     let source = params.windSources[i];
@@ -184,18 +184,17 @@ fn windEffect(gridPoint: vec3f) -> WindEffect {
     let radiiSquared = dot(fromSource, fromSource) / (source.radius * source.radius);
     if (radiiSquared > WIND_REACH_IN_RADII_SQUARED) { continue; }
     let weight = exp(-radiiSquared) * source.strength;
-    effect.acceleration += weight * sourcePush(source, fromSource);
     let motion = clamp(length(vec2f(source.velocityU, source.velocityV)) / POINTER_SPEED_FOR_FULL_CLEANING, 0.0, 1.0);
+    effect.acceleration += weight * sourcePush(source, fromSource, motion);
     let blowing = weight * max(motion, source.outwardStrength);
-    effect.cleanAirRate += params.cleanAirRate * blowing;
     effect.movedAirShare = min(1.0, effect.movedAirShare + blowing);
   }
   return effect;
 }
 
-fn sourcePush(source: WindSourceParams, fromSource: vec2f) -> vec3f {
+fn sourcePush(source: WindSourceParams, fromSource: vec2f, motion: f32) -> vec3f {
   let sweepInCells = vec2f(source.velocityU, source.velocityV) * gridSize().xy;
   let outwardInCells = normalize(vec3f(fromSource / params.canvasAspect * gridSize().xy, 0.0) + vec3f(1e-5));
   let outwardPush = source.outwardStrength * (outwardInCells * OUTWARD_PUSH + vec3f(0.0, 0.0, INTO_SCENE_PUSH));
-  return vec3f(sweepInCells, 0.0) * SWEEP_PUSH + outwardPush;
+  return vec3f(sweepInCells * SWEEP_PUSH, motion * INTO_SCENE_PUSH_WHILE_SWEEPING) + outwardPush;
 }

@@ -47,7 +47,7 @@ fn main(@builtin(global_invocation_id) cellId: vec3u) {
   density += min(params.diffusion * stepSeconds(), LARGEST_STABLE_DIFFUSION_STEP) * densityLaplacian(cell);
   let baseDensity = baseFogDensity(centre);
   density += (baseDensity - density) * (1.0 - exp(-params.returnRate * stepSeconds()));
-  density *= exp(-wind.cleanAirRate * windReachHere.r * windReachHere.g * stepSeconds());
+  density *= exp(-params.wakeMixing * movedAir * windReachHere.g * stepSeconds());
   if (windReachHere.b < 0.5) { density = fogJustInFront(cell); }
 
   var firstPhaseOffset = textureSampleLevel(fog, clampSampler, departureUvw, 0.0).yzw + displacement;
