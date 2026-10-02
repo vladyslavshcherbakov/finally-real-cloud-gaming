@@ -2,6 +2,7 @@
 
 const DEPTH_LAYERS = 8.0;
 const SHIELDING_PER_FOGGY_LAYER = 3.0;
+const SHARE_OF_OPENING_FOG_THAT_STARTS_TO_SHIELD = 0.2;
 const COLUMN_OPTICAL_DEPTH_CLEARED_AT_THE_PLAIN_RATE = 5.0;
 const WIND_REACH_BEYOND_THE_SURFACE = 1.15;
 
@@ -27,7 +28,7 @@ fn storeWindReachOfEachSlice(column: vec2u, surfaceMetres: f32, clearingSpeedUp:
   let layerMetres = params.farSliceMetres / DEPTH_LAYERS;
   var foggyMetresInFront = 0.0;
   for (var slice = 0u; slice < u32(params.gridDepth); slice++) {
-    let foggyMetresHere = shareOfOpeningFogLeft(column, slice, surfaceMetres) * sliceMetresInFrontOfSurface(slice, surfaceMetres);
+    let foggyMetresHere = shieldingShare(shareOfOpeningFogLeft(column, slice, surfaceMetres)) * sliceMetresInFrontOfSurface(slice, surfaceMetres);
     let foggyLayersInFront = (foggyMetresInFront + 0.5 * foggyMetresHere) / layerMetres;
     let reach = exp(-SHIELDING_PER_FOGGY_LAYER * foggyLayersInFront) * shareInFrontOfSurface(slice, surfaceMetres);
     textureStore(windReachOut, vec3u(column, slice), vec4f(reach, clearingSpeedUp, fogCanLiveIn(slice, surfaceMetres), openingPerMeanBaseFog));
@@ -39,6 +40,10 @@ fn shareOfOpeningFogLeft(column: vec2u, slice: u32, surfaceMetres: f32) -> f32 {
   if (sliceMetresInFrontOfSurface(slice, surfaceMetres) <= 0.0) { return 0.0; }
   let openingFog = baseFogDensity(vec3f(vec2f(column) + 0.5, f32(slice) + 0.5));
   return clamp(textureLoad(fog, vec3u(column, slice), 0).r / max(openingFog, 1e-4), 0.0, 1.0);
+}
+
+fn shieldingShare(shareOfOpeningFog: f32) -> f32 {
+  return smoothstep(SHARE_OF_OPENING_FOG_THAT_STARTS_TO_SHIELD, 1.0, shareOfOpeningFog);
 }
 
 fn shareInFrontOfSurface(slice: u32, surfaceMetres: f32) -> f32 {
