@@ -6,15 +6,11 @@ import { SceneTextures } from './Scene/SceneTextures.js';
 import { SOLVERS, solverClass } from './Solvers.js';
 import { QUALITY_PRESETS, gridSize } from '../../../Shared/Domain/Entities/QualityPreset.js';
 import { chooseNextScene } from '../../../Shared/Domain/UseCases/ChooseNextScene.js';
-import { coverFit } from '../../../Shared/Domain/Entities/ViewFit.js';
-import { DEBUG_VIEWS } from '../../../Shared/Domain/Entities/Settings.js';
+import { simulationParams } from './SimulationParams.js';
 
-const NEAR_SLICE_METRES = 1;
-const SOLID_THICKNESS_FACTOR = 0.5;
 const MOST_FRAMES_IN_FLIGHT = 2;
 const FRAME_TIME_SMOOTHING = 0.05;
 const LIGHT_UPDATE_EVERY_FRAMES = 2;
-const LIGHT_SMOOTHING_SECONDS = 0.8;
 
 export class FogEngine {
   #device;
@@ -238,42 +234,13 @@ export class FogEngine {
 
   #writeParams(frameTime) {
     const settings = this.#settings.values;
-    const scene = this.#scene;
-    const description = scene.description;
-    const fit = coverFit({
-      canvasAspect: this.#frameTarget.width / this.#frameTarget.height,
-      photoAspect: description.aspect,
-      photoFovYDegrees: description.fovYDegrees,
-    });
-    const [gridWidth, gridHeight, gridDepth] = this.#field.size;
-    const farSliceMetres = scene.measurements.fogReachMetres;
-    const [sunDirectionX, sunDirectionY, sunDirectionZ] = description.sunDirection;
-    const [groundNormalX, groundNormalY, groundNormalZ] = description.groundNormal;
-    const [sunColorR, sunColorG, sunColorB] = scene.measurements.sunColor;
-    const [skyColorR, skyColorG, skyColorB] = scene.measurements.skyColor;
-    const [groundColorR, groundColorG, groundColorB] = scene.measurements.groundColor;
     this.#params.set({
-      gridWidth, gridHeight, gridDepth, cellCount: this.#field.cellCount,
-      elapsedSeconds: this.#elapsedSeconds, stepSeconds: frameTime.simulationSeconds, frameIndex: this.#frameIndex,
-      canvasAspect: this.#frameTarget.width / this.#frameTarget.height,
-      nearSliceMetres: NEAR_SLICE_METRES, farSliceMetres, sliceLogRange: Math.log(farSliceMetres / NEAR_SLICE_METRES),
-      solidThicknessFactor: SOLID_THICKNESS_FACTOR,
-      tanHalfFovX: fit.tanHalfFovX, tanHalfFovY: fit.tanHalfFovY,
-      depthCodecNearMetres: description.depthNearMetres, depthCodecLogRange: Math.log(description.depthFarMetres / description.depthNearMetres),
-      photoScaleU: fit.photoScaleU, photoScaleV: fit.photoScaleV, photoOffsetU: fit.photoOffsetU, photoOffsetV: fit.photoOffsetV,
-      groundNormalX, groundNormalY, groundNormalZ, groundOffsetMetres: description.groundOffsetMetres,
-      sunDirectionX, sunDirectionY, sunDirectionZ, sunIntensity: settings.sun,
-      sunColorR, sunColorG, sunColorB, ambientIntensity: settings.ambient,
-      skyColorR, skyColorG, skyColorB, sceneGlowIntensity: settings.sceneGlow,
-      groundColorR, groundColorG, groundColorB, exposure: settings.exposure,
-      lightBlend: 1 - Math.exp(-this.#secondsSinceLight / LIGHT_SMOOTHING_SECONDS),
-      windDriftX: settings.drift, windDriftY: 0, windDriftZ: settings.drift * 0.3, turbulenceMetresPerSecond: settings.turbulence,
-      openingOpticalDepth: settings.fogThickness, heightFalloffMetres: settings.heightFalloff, baseSmog: settings.baseSmog, clumps: settings.clumps,
-      returnRate: settings.returnRate, diffusion: settings.diffusion, vorticityConfinement: settings.vorticity, damping: settings.damping,
-      detailAmount: settings.detail, detailScalePerMetre: settings.detailScale, detailFlowPeriodSeconds: settings.detailFlowPeriod, erosion: settings.erosion,
-      windStrength: settings.windStrength, windRadius: settings.windRadius, wakeMixing: settings.wakeMixing,
-      forwardScattering: settings.forwardScattering, multipleScattering: settings.multipleScattering,
-      samplesPerSlice: QUALITY_PRESETS[this.#settings.values.quality].samplesPerSlice, debugView: DEBUG_VIEWS.indexOf(settings.view),
+      ...simulationParams({
+        settings, scene: this.#scene, gridSize: this.#field.size, cellCount: this.#field.cellCount,
+        canvasAspect: this.#frameTarget.width / this.#frameTarget.height,
+        elapsedSeconds: this.#elapsedSeconds, frameIndex: this.#frameIndex, stepSeconds: frameTime.simulationSeconds,
+        secondsSinceLight: this.#secondsSinceLight,
+      }),
       ...this.#solver.solverParams(frameTime),
     });
     const windSources = this.#pointerWind.windSources({
