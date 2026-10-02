@@ -11,8 +11,7 @@ const VELOCITY_SMOOTHING_PER_SECOND = 20;
 const VELOCITY_DECAY_PER_SECOND = 12;
 const STILL_AFTER_SECONDS = 0.04;
 const SHORTEST_MOVE_SECONDS = 1 / 240;
-const OUTWARD_BLOW_RAMP_SECONDS = 1;
-const OUTWARD_BLOW_AT_THE_TAP = 0.4;
+const PUFF_AFTER_RELEASE_SECONDS = 0.5;
 
 export class UnknownPointerKind extends Error {
   constructor(rawKind) {
@@ -33,7 +32,7 @@ export class PointerWind {
   pointerPressed({ id, kind, u, v, timeSeconds }) {
     const pointer = this.#trackedPointer({ id, kind, u, v, timeSeconds });
     pointer.isPressed = true;
-    pointer.pressedAtSeconds = timeSeconds;
+    pointer.releasedAtSeconds = null;
   }
 
   pointerMoved({ id, kind, u, v, timeSeconds }) {
@@ -47,11 +46,11 @@ export class PointerWind {
     pointer.lastMoveSeconds = timeSeconds;
   }
 
-  pointerReleased({ id }) {
+  pointerReleased({ id, timeSeconds }) {
     const pointer = this.#pointersById.get(id);
     if (!pointer) return;
-    if (pointer.kind.staysAfterRelease) pointer.isPressed = false;
-    else this.#pointersById.delete(id);
+    pointer.isPressed = false;
+    pointer.releasedAtSeconds = timeSeconds;
   }
 
   pointerCancelled({ id }) {
@@ -65,13 +64,18 @@ export class PointerWind {
 
   windSources({ nowSeconds, realSeconds, strength, radius }) {
     const sources = [];
-    for (const pointer of this.#pointersById.values()) {
+    for (const [id, pointer] of this.#pointersById) {
       if (nowSeconds - pointer.lastMoveSeconds > STILL_AFTER_SECONDS) {
         const decay = Math.exp(-realSeconds * VELOCITY_DECAY_PER_SECOND);
         pointer.velocityU *= decay;
         pointer.velocityV *= decay;
       }
-      if (!pointer.isPressed && !pointer.kind.blowsWhileHovering) continue;
+      const outwardStrength = pointer.isPressed ? 1 : puffAfterRelease(pointer.releasedAtSeconds, nowSeconds);
+      if (outwardStrength === 0 && !pointer.isPressed && !pointer.kind.staysAfterRelease) {
+        this.#pointersById.delete(id);
+        continue;
+      }
+      if (outwardStrength === 0 && !pointer.kind.blowsWhileHovering) continue;
       sources.push(new WindSource({
         u: pointer.u,
         v: pointer.v,
@@ -79,7 +83,7 @@ export class PointerWind {
         velocityV: clampedPointerSpeed(pointer.velocityV),
         radius,
         strength,
-        outwardStrength: pointer.isPressed ? outwardStrengthAfterHolding(nowSeconds - pointer.pressedAtSeconds) : 0,
+        outwardStrength,
       }));
     }
     return sources;
@@ -88,16 +92,16 @@ export class PointerWind {
   #trackedPointer({ id, kind, u, v, timeSeconds }) {
     let pointer = this.#pointersById.get(id);
     if (!pointer) {
-      pointer = { kind, u, v, velocityU: 0, velocityV: 0, isPressed: false, pressedAtSeconds: null, lastMoveSeconds: timeSeconds };
+      pointer = { kind, u, v, velocityU: 0, velocityV: 0, isPressed: false, releasedAtSeconds: null, lastMoveSeconds: timeSeconds };
       this.#pointersById.set(id, pointer);
     }
     return pointer;
   }
 }
 
-function outwardStrengthAfterHolding(heldSeconds) {
-  const shareOfRamp = Math.min(1, Math.max(0, heldSeconds / OUTWARD_BLOW_RAMP_SECONDS));
-  return OUTWARD_BLOW_AT_THE_TAP + (1 - OUTWARD_BLOW_AT_THE_TAP) * shareOfRamp * shareOfRamp;
+function puffAfterRelease(releasedAtSeconds, nowSeconds) {
+  if (releasedAtSeconds === null || releasedAtSeconds === undefined) return 0;
+  return Math.min(1, Math.max(0, 1 - (nowSeconds - releasedAtSeconds) / PUFF_AFTER_RELEASE_SECONDS));
 }
 
 function clampedPointerSpeed(uvPerSecond) {

@@ -11,7 +11,7 @@
 ## Wind
 
 - A mouse blows while it moves, with or without a button.
-- A tap, or a pressed mouse button, blows at once in every direction from that point and away into the scene. Holding it grows the blow to full strength over one second.
+- A tap, or a pressed mouse button, blows at full strength at once in every direction from that point and away into the scene. After it is lifted, the blow fades out over half a second, so a short tap still makes a puff.
 - As the finger moves, the blow turns from every direction into the direction of the move, and a quick move blows only along it.
 - When the wind stops, the air settles back into its slow swirl within a fraction of a second, so it does not carry fog back into the cleared spot.
 - The wind carries the fog along the move and a little away into the scene. Fog it carries past the edge of the screen or into the distance is gone.
