@@ -1,6 +1,6 @@
 import { FogField, FOG_FIELD_KERNELS } from './Field/FogField.js';
 import { NoiseTextures, NOISE_KERNELS } from './Field/NoiseTextures.js';
-import { ENGINE_PHASES } from './EnginePhase.js';
+import { ENGINE_PHASES, enginePhaseUpdate } from './EnginePhase.js';
 import { EngineStats } from './EngineStats.js';
 import { SceneTextures } from './Scene/SceneTextures.js';
 import { SOLVERS, solverClass } from './Solvers.js';
@@ -143,10 +143,11 @@ export class FogEngine {
     this.#encodeFrame();
   }
 
-  #enterPhase(phase, progress = null) {
+  #enterPhase(phase, noiseProgress = null) {
     if (phase !== this.#phase) this.#logger.info(`engine phase: ${this.#phase} to ${phase}`);
     this.#phase = phase;
-    for (const listener of this.#phaseListeners) listener(phase, progress);
+    const phaseUpdate = enginePhaseUpdate(phase, noiseProgress);
+    for (const listener of this.#phaseListeners) listener(phaseUpdate);
   }
 
   #deviceLost(info) {

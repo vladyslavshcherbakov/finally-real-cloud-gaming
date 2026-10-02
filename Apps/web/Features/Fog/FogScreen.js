@@ -35,7 +35,7 @@ export class FogScreen {
     this.#canvas.addEventListener('pointerup', (event) => this.#pointerEvent(event, 'pointerReleased'), listenerOptions);
     this.#canvas.addEventListener('pointercancel', (event) => this.#pointerEvent(event, 'pointerCancelled'), listenerOptions);
     this.#canvas.addEventListener('pointerleave', (event) => this.#pointerEvent(event, 'pointerLeft'), listenerOptions);
-    this.#engine.subscribeToPhase((phase) => this.#phaseChanged(phase));
+    this.#engine.subscribeToPhase((phaseUpdate) => this.#phaseChanged(phaseUpdate));
   }
 
   #pointerEvent(event, factName) {
@@ -61,9 +61,9 @@ export class FogScreen {
     });
   }
 
-  #phaseChanged(phase, progress) {
-    const progressText = progress === null ? '' : ` ${Math.round(progress * 100)}%`;
-    this.#message.textContent = PHASE_MESSAGES[phase] + progressText;
-    this.#message.hidden = PHASE_MESSAGES[phase] === '';
+  #phaseChanged({ name, noiseProgress }) {
+    const progressText = noiseProgress === null ? '' : ` ${Math.round(noiseProgress * 100)}%`;
+    this.#message.textContent = PHASE_MESSAGES[name] + progressText;
+    this.#message.hidden = PHASE_MESSAGES[name] === '';
   }
 }
