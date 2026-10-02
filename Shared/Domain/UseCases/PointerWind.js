@@ -17,6 +17,9 @@ const PUFF_AFTER_RELEASE_SECONDS = 0.5;
 const DRAG_UV_THAT_ENDS_A_TAP = 0.05;
 const HOVERING_SHARE_OF_STRENGTH = 1 / 3;
 const VORTEX_FADE_SECONDS = 2;
+const VORTEX_LEAN_SECONDS_OF_DRIFT = 1.5;
+const LONGEST_VORTEX_LEAN_IN_RADII = 2;
+const POINTER_WIND_SHARE_WHILE_SPINNING_A_VORTEX = 0.25;
 
 export class UnknownPointerKind extends Error {
   constructor(rawKind) {
@@ -100,7 +103,7 @@ export class PointerWind {
         velocityU: clampedPointerSpeed(pointer.velocityU),
         velocityV: clampedPointerSpeed(pointer.velocityV),
         radius,
-        strength: strength * strengthShareInPhase(pointer.phase),
+        strength: strength * strengthShareInPhase(pointer.phase) * this.#ownWindShare(id),
         outwardStrength: outwardStrengthInPhase(pointer.phase, nowSeconds),
       }));
     }
@@ -117,7 +120,14 @@ export class PointerWind {
       radius: vortexState.radius,
       spin: vortexState.spin,
       strength: strength * vortexState.strengthShare * fadeShare(vortexState, nowSeconds),
+      leanU: vortexState.leanU,
+      leanV: vortexState.leanV,
     }));
+  }
+
+  #ownWindShare(pointerId) {
+    const isSpinningAVortex = this.#vortexStates.some((state) => state.phase === SPINNING && state.pointerId === pointerId);
+    return isSpinningAVortex ? POINTER_WIND_SHARE_WHILE_SPINNING_A_VORTEX : 1;
   }
 
   #releaseVorticesNoLongerCircled(nowSeconds) {
@@ -145,6 +155,7 @@ export class PointerWind {
         radius: drawnCircle.radius,
         spin: drawnCircle.spin,
         strengthShare: strengthShareInPhase(pointer.phase),
+        ...vortexLean(drawnCircle),
       });
     }
   }
@@ -192,6 +203,13 @@ function strengthShareInPhase(phase) {
     case 'gone':
       return 0;
   }
+}
+
+function vortexLean(drawnCircle) {
+  const leanU = drawnCircle.driftU * VORTEX_LEAN_SECONDS_OF_DRIFT;
+  const leanV = drawnCircle.driftV * VORTEX_LEAN_SECONDS_OF_DRIFT;
+  const shortening = Math.min(1, (LONGEST_VORTEX_LEAN_IN_RADII * drawnCircle.radius) / Math.max(Math.hypot(leanU, leanV), 1e-9));
+  return { leanU: leanU * shortening, leanV: leanV * shortening };
 }
 
 function fadeShare(vortexState, nowSeconds) {

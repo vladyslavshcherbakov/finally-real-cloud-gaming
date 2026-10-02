@@ -164,18 +164,51 @@ test('vortex_whenAMouseCirclesWithoutAButton_spinsWeakerThanWithTheButtonPressed
   assert.ok(strengths[0] < strengths[1], `strength without a button ${strengths[0]}, with it ${strengths[1]}`);
 });
 
+test('vortex_whenTheCirclesDriftSideways_leansTheWayTheyDrift', () => {
+  const pointerWind = new PointerWind();
+  pointerWind.pointerPressed({ id: 7, kind: POINTER_KINDS.touch, u: CIRCLE.centreU + CIRCLE.radius, v: CIRCLE.centreV, timeSeconds: 0 });
+
+  const endSeconds = circle(pointerWind, { id: 7, kind: POINTER_KINDS.touch, turns: TURNS_TO_START_A_VORTEX + 0.5, direction: 1, driftUPerSecond: 0.05 });
+
+  const [vortex] = pointerWind.vortices({ nowSeconds: endSeconds, strength: 1 });
+  assert.ok(vortex.leanU > Math.abs(vortex.leanV), `lean ${vortex.leanU}, ${vortex.leanV}`);
+});
+
+test('vortex_whenTheCirclesStayInPlace_standsStraightIntoTheScene', () => {
+  const pointerWind = new PointerWind();
+  pointerWind.pointerPressed({ id: 7, kind: POINTER_KINDS.touch, u: CIRCLE.centreU + CIRCLE.radius, v: CIRCLE.centreV, timeSeconds: 0 });
+
+  const endSeconds = circle(pointerWind, { id: 7, kind: POINTER_KINDS.touch, turns: TURNS_TO_START_A_VORTEX + 0.5, direction: 1 });
+
+  const [vortex] = pointerWind.vortices({ nowSeconds: endSeconds, strength: 1 });
+  assert.ok(Math.hypot(vortex.leanU, vortex.leanV) < 0.1 * vortex.radius, `lean ${vortex.leanU}, ${vortex.leanV} for radius ${vortex.radius}`);
+});
+
+test('wind_whilePointerSpinsAVortex_blowsWeakerItselfThanBeforeTheVortex', () => {
+  const pointerWind = new PointerWind();
+  pointerWind.pointerPressed({ id: 7, kind: POINTER_KINDS.touch, u: CIRCLE.centreU + CIRCLE.radius, v: CIRCLE.centreV, timeSeconds: 0 });
+  const [sourceBeforeTheVortex] = sourcesAt(pointerWind, 0);
+
+  const endSeconds = circle(pointerWind, { id: 7, kind: POINTER_KINDS.touch, turns: TURNS_TO_START_A_VORTEX + 0.5, direction: 1 });
+  pointerWind.vortices({ nowSeconds: endSeconds, strength: 1 });
+
+  const [sourceWhileSpinning] = sourcesAt(pointerWind, endSeconds);
+  assert.ok(sourceWhileSpinning.strength < sourceBeforeTheVortex.strength,
+    `pointer wind before the vortex ${sourceBeforeTheVortex.strength}, while spinning it ${sourceWhileSpinning.strength}`);
+});
+
 test('pointerKind_whenTheBrowserReportsAnUnknownKind_failsNamingIt', () => {
   assert.throws(() => pointerKind('stylus'), (error) => error instanceof UnknownPointerKind && error.rawKind === 'stylus');
 });
 
-function circle(pointerWind, { id, kind, turns, direction }) {
+function circle(pointerWind, { id, kind, turns, direction, driftUPerSecond = 0 }) {
   const moveCount = Math.round(turns * CIRCLE.movesPerTurn);
   let timeSeconds = 0;
   for (let move = 1; move <= moveCount; move++) {
     timeSeconds = (move / CIRCLE.movesPerTurn) * CIRCLE.secondsPerTurn;
     const angle = direction * (move / CIRCLE.movesPerTurn) * 2 * Math.PI;
     pointerWind.pointerMoved({
-      id, kind, u: CIRCLE.centreU + CIRCLE.radius * Math.cos(angle), v: CIRCLE.centreV + CIRCLE.radius * Math.sin(angle), timeSeconds,
+      id, kind, u: CIRCLE.centreU + driftUPerSecond * timeSeconds + CIRCLE.radius * Math.cos(angle), v: CIRCLE.centreV + CIRCLE.radius * Math.sin(angle), timeSeconds,
     });
   }
   return timeSeconds;

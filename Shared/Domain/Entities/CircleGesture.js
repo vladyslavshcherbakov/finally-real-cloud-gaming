@@ -13,12 +13,14 @@ const LARGEST_CIRCLE_RADIUS = 0.3;
 const RADIUS_PER_MEAN_VERTICAL_DISTANCE = Math.PI / 2;
 
 export class DrawnCircle {
-  constructor({ u, v, radius, spin, turns }) {
+  constructor({ u, v, radius, spin, turns, driftU, driftV }) {
     this.u = u;
     this.v = v;
     this.radius = radius;
     this.spin = spin;
     this.turns = turns;
+    this.driftU = driftU;
+    this.driftV = driftV;
   }
 }
 
@@ -51,21 +53,52 @@ export class CircleGesture {
   }
 
   circle(nowSeconds) {
-    const lastTurnSteps = this.#path.filter((step) => nowSeconds - step.timeSeconds <= LAST_TURN_SECONDS);
-    const turnsInTheLastSecond = turnsOf(lastTurnSteps);
+    const turnsInTheLastSecond = turnsOf(this.#path.filter((step) => nowSeconds - step.timeSeconds <= LAST_TURN_SECONDS));
     if (Math.abs(turnsInTheLastSecond) < TURNS_IN_THE_LAST_SECOND_WHILE_CIRCLING) return null;
-    const turns = turnsOf(this.#path.filter((step) => nowSeconds - step.timeSeconds <= COUNTED_PATH_SECONDS));
-    const centreU = mean(lastTurnSteps.map((step) => step.u));
-    const centreV = mean(lastTurnSteps.map((step) => step.v));
-    const meanVerticalDistance = mean(lastTurnSteps.map((step) => Math.abs(step.v - centreV)));
+    const [lastTurnSteps, turnBeforeSteps] = lastTwoFullTurns(this.#path);
+    const lastTurn = turnShape(lastTurnSteps.length > 0 ? lastTurnSteps : this.#path);
+    const drift = turnBeforeSteps.length > 0 ? centreDrift(turnShape(turnBeforeSteps), lastTurn) : { u: 0, v: 0 };
     return new DrawnCircle({
-      u: centreU,
-      v: centreV,
-      radius: Math.min(LARGEST_CIRCLE_RADIUS, Math.max(SMALLEST_CIRCLE_RADIUS, meanVerticalDistance * RADIUS_PER_MEAN_VERTICAL_DISTANCE)),
+      u: lastTurn.u,
+      v: lastTurn.v,
+      radius: Math.min(LARGEST_CIRCLE_RADIUS, Math.max(SMALLEST_CIRCLE_RADIUS, lastTurn.meanVerticalDistance * RADIUS_PER_MEAN_VERTICAL_DISTANCE)),
       spin: Math.sign(turnsInTheLastSecond),
-      turns: Math.abs(turns),
+      turns: Math.abs(turnsOf(this.#path.filter((step) => nowSeconds - step.timeSeconds <= COUNTED_PATH_SECONDS))),
+      driftU: drift.u,
+      driftV: drift.v,
     });
   }
+}
+
+function lastTwoFullTurns(path) {
+  const turns = [[], []];
+  let turnIndex = 0;
+  let turnedRadians = 0;
+  for (let i = path.length - 1; i >= 0 && turnIndex < turns.length; i--) {
+    turns[turnIndex].push(path[i]);
+    turnedRadians += path[i].turnRadians;
+    if (Math.abs(turnedRadians) >= FULL_TURN_RADIANS) {
+      turnIndex++;
+      turnedRadians = 0;
+    }
+  }
+  return turnIndex >= 2 ? turns : [turnIndex >= 1 ? turns[0] : [], []];
+}
+
+function turnShape(steps) {
+  const u = mean(steps.map((step) => step.u));
+  const v = mean(steps.map((step) => step.v));
+  return {
+    u,
+    v,
+    timeSeconds: mean(steps.map((step) => step.timeSeconds)),
+    meanVerticalDistance: mean(steps.map((step) => Math.abs(step.v - v))),
+  };
+}
+
+function centreDrift(turnBefore, lastTurn) {
+  const secondsBetweenTurns = Math.max(lastTurn.timeSeconds - turnBefore.timeSeconds, SHORTEST_MOVE_SECONDS);
+  return { u: (lastTurn.u - turnBefore.u) / secondsBetweenTurns, v: (lastTurn.v - turnBefore.v) / secondsBetweenTurns };
 }
 
 function turnsOf(steps) {

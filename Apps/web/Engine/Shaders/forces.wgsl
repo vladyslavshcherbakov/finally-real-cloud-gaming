@@ -22,7 +22,9 @@ fn main(@builtin(global_invocation_id) cellId: vec3u) {
   let centre = cellCentre(cellId);
   let cellVelocity = textureLoad(velocity, cellId, 0).xyz;
   let pullTowardSwirlingAir = (swirlingAirVelocity(centre) - cellVelocity) * PULL_TOWARD_SWIRLING_AIR_PER_SECOND;
-  let acceleration = windEffect(centre).acceleration * textureLoad(windReach, cellId, 0).r + pullTowardSwirlingAir - cellVelocity * params.damping
+  let wind = windEffect(centre);
+  let windReachHere = textureLoad(windReach, cellId, 0);
+  let acceleration = wind.acceleration * windReachHere.r + wind.vortexAcceleration * windReachHere.b + pullTowardSwirlingAir - cellVelocity * params.damping
     + vorticityConfinement(vec3i(cellId), cellId);
   textureStore(accelerationOut, cellId, vec4f(acceleration, 0.0));
 }

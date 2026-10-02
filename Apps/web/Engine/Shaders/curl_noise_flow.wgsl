@@ -15,7 +15,10 @@ fn main(@builtin(global_invocation_id) cellId: vec3u) {
   let departurePoint = centre - textureLoad(velocity, cellId, 0).xyz * stepSeconds();
   let carriedImpulse = textureSampleLevel(impulse, clampSampler, departurePoint / gridSize(), 0.0).xyz;
   let fadedImpulse = carriedImpulse * exp(-(IMPULSE_FADE_PER_SECOND + vec3f(params.damping)) * stepSeconds());
-  let newImpulse = fadedImpulse + windEffect(centre).acceleration * textureLoad(windReach, cellId, 0).r * stepSeconds() * IMPULSE_SHARE_OF_WIND;
+  let wind = windEffect(centre);
+  let windReachHere = textureLoad(windReach, cellId, 0);
+  let windAcceleration = wind.acceleration * windReachHere.r + wind.vortexAcceleration * windReachHere.b;
+  let newImpulse = fadedImpulse + windAcceleration * stepSeconds() * IMPULSE_SHARE_OF_WIND;
   textureStore(impulseOut, cellId, vec4f(newImpulse, 0.0));
   textureStore(velocityOut, cellId, vec4f(swirlingAirVelocity(centre) + newImpulse, 0.0));
 }

@@ -166,7 +166,8 @@ fn remap(value: f32, fromLow: f32, fromHigh: f32, toLow: f32, toHigh: f32) -> f3
 struct WindEffect {
   acceleration: vec3f,
   movedAirShare: f32,
-  vortexCoreShare: f32,
+  vortexAcceleration: vec3f,
+  vortexEyeShare: f32,
 }
 
 const SWEEP_PUSH = 8.0;
@@ -175,13 +176,15 @@ const OUTWARD_PUSH = 15.0;
 const INTO_SCENE_PUSH = 6.0;
 const POINTER_SPEED_FOR_FULL_CLEANING = 0.4;
 const WIND_REACH_IN_RADII_SQUARED = 9.0;
-const VORTEX_SPIN_PUSH = 4.0;
-const VORTEX_INWARD_PUSH = 1.5;
-const VORTEX_CORE_INTO_SCENE_PUSH = 10.0;
-const VORTEX_CORE_SHARE_OF_RADIUS = 0.4;
+const VORTEX_TURNS_PER_SECOND_AT_THE_EYE_WALL = 1.0;
+const VORTEX_INWARD_SHARE_OF_THE_SPIN = 0.35;
+const VORTEX_SPIN_UP_PER_SECOND = 1.0;
+const VORTEX_REACH_IN_RADII = 3.0;
+const VORTEX_EYE_SHARE_OF_RADIUS = 0.35;
+const VORTEX_EYE_INTO_SCENE_PUSH = 10.0;
 
 fn windEffect(gridPoint: vec3f) -> WindEffect {
-  var effect = WindEffect(vec3f(0.0), 0.0, 0.0);
+  var effect = WindEffect(vec3f(0.0), 0.0, vec3f(0.0), 0.0);
   let canvasUv = gridPoint.xy / gridSize().xy;
   for (var i = 0; i < i32(params.windSourceCount); i++) {
     let source = params.windSources[i];
@@ -195,28 +198,28 @@ fn windEffect(gridPoint: vec3f) -> WindEffect {
     effect.movedAirShare = min(1.0, effect.movedAirShare + blowing);
   }
   for (var i = 0; i < i32(params.vortexCount); i++) {
-    let vortex = vortexEffect(params.vortices[i], canvasUv);
-    effect.acceleration += vortex.acceleration;
+    let vortex = vortexEffect(params.vortices[i], gridPoint);
     effect.movedAirShare = min(1.0, effect.movedAirShare + vortex.movedAirShare);
-    effect.vortexCoreShare = min(1.0, effect.vortexCoreShare + vortex.vortexCoreShare);
+    effect.vortexAcceleration += vortex.vortexAcceleration;
+    effect.vortexEyeShare = min(1.0, effect.vortexEyeShare + vortex.vortexEyeShare);
   }
   return effect;
 }
 
-fn vortexEffect(vortex: VortexParams, canvasUv: vec2f) -> WindEffect {
-  let fromCentre = (canvasUv - vec2f(vortex.u, vortex.v)) * vec2f(params.canvasAspect, 1.0);
-  let radiiSquared = dot(fromCentre, fromCentre) / (vortex.radius * vortex.radius);
-  if (radiiSquared > WIND_REACH_IN_RADII_SQUARED) { return WindEffect(vec3f(0.0), 0.0, 0.0); }
+fn vortexEffect(vortex: VortexParams, gridPoint: vec3f) -> WindEffect {
+  let centreAtThisDepth = vec2f(vortex.u, vortex.v) + vec2f(vortex.leanU, vortex.leanV) * gridPoint.z / gridSize().z;
+  let fromCentre = (gridPoint.xy / gridSize().xy - centreAtThisDepth) * vec2f(params.canvasAspect, 1.0);
+  let radii = length(fromCentre) / vortex.radius;
+  if (radii > VORTEX_REACH_IN_RADII) { return WindEffect(vec3f(0.0), 0.0, vec3f(0.0), 0.0); }
   let outward = fromCentre / max(length(fromCentre), 1e-5);
   let alongTheSpin = vec2f(-outward.y, outward.x) * vortex.spin;
-  let ringWeight = sqrt(radiiSquared) * exp(-radiiSquared) * vortex.strength;
-  let screenPush = (alongTheSpin * VORTEX_SPIN_PUSH - outward * VORTEX_INWARD_PUSH) * ringWeight;
-  let screenPushInCells = screenPush / vec2f(params.canvasAspect, 1.0) * gridSize().xy;
-  let coreShare = exp(-radiiSquared / (VORTEX_CORE_SHARE_OF_RADIUS * VORTEX_CORE_SHARE_OF_RADIUS)) * vortex.strength;
-  return WindEffect(
-    vec3f(screenPushInCells, coreShare * VORTEX_CORE_INTO_SCENE_PUSH),
-    min(1.0, exp(-radiiSquared) * vortex.strength),
-    min(1.0, coreShare));
+  let shareOfTheEyeWallSpeed = 2.0 * radii / (1.0 + radii * radii) * (1.0 - smoothstep(VORTEX_REACH_IN_RADII - 1.0, VORTEX_REACH_IN_RADII, radii));
+  let eyeWallSpeed = 2.0 * PI * VORTEX_TURNS_PER_SECOND_AT_THE_EYE_WALL * vortex.radius;
+  let screenAcceleration = (alongTheSpin - outward * VORTEX_INWARD_SHARE_OF_THE_SPIN)
+    * eyeWallSpeed * shareOfTheEyeWallSpeed * vortex.strength * VORTEX_SPIN_UP_PER_SECOND;
+  let eyeShare = min(1.0, exp(-(radii * radii) / (VORTEX_EYE_SHARE_OF_RADIUS * VORTEX_EYE_SHARE_OF_RADIUS)) * vortex.strength);
+  let accelerationInCells = vec3f(screenAcceleration / vec2f(params.canvasAspect, 1.0) * gridSize().xy, eyeShare * VORTEX_EYE_INTO_SCENE_PUSH);
+  return WindEffect(vec3f(0.0), eyeShare, accelerationInCells, eyeShare);
 }
 
 fn sourcePush(source: WindSourceParams, fromSource: vec2f, motion: f32) -> vec3f {
