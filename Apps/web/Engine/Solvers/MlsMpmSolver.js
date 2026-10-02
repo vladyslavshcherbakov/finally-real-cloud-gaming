@@ -28,6 +28,7 @@ export class MlsMpmSolver {
   static label = 'MLS-MPM gas';
   static description = 'Material point method with APIC transfer and a weakly compressible gas.';
   static kernels = [...Object.values(particleKernels(VEC4S_PER_PARTICLE)), PARTICLES_TO_GRID_KERNEL, GRID_UPDATE_KERNEL, GRID_TO_PARTICLES_KERNEL];
+  static advectsFogSharply = false;
 
   #kernels;
   #field;

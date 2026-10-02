@@ -49,7 +49,10 @@ const FOG_UPDATE_BINDINGS = {
   velocity: 'texture3d', fog: 'texture3d', flow: 'texture3d', advected: 'texture3d', windReach: 'texture3d',
   flowNoise: 'texture3d', clampSampler: 'sampler', repeatSampler: 'sampler', fogOut: VECTOR_OUT, flowOut: VECTOR_OUT,
 };
-const FOG_UPDATE_KERNEL = { shader: 'fog_update', bindings: FOG_UPDATE_BINDINGS };
+const FOG_UPDATE_KERNELS = {
+  semiLagrangian: { shader: 'fog_update', bindings: FOG_UPDATE_BINDINGS, constants: { USE_MACCORMACK: false } },
+  macCormack: { shader: 'fog_update', bindings: FOG_UPDATE_BINDINGS, constants: { USE_MACCORMACK: true } },
+};
 const LIGHT_KERNEL = {
   shader: 'light',
   bindings: { fog: 'texture3d', solids: 'texture3d', previousLight: 'texture3d', clampSampler: 'sampler', lightOut: VECTOR_OUT },
@@ -57,7 +60,7 @@ const LIGHT_KERNEL = {
 
 export const FOG_FIELD_KERNELS = [
   SOLIDS_KERNEL, FOG_RESET_KERNEL, WIND_REACH_KERNEL, VORTICITY_KERNEL, FORCES_KERNEL, ADVECT_KERNEL, DIVERGENCE_KERNEL, ...PRESSURE_MULTIGRID_KERNELS,
-  PROJECT_KERNEL, FOG_UPDATE_KERNEL, LIGHT_KERNEL, FIELD_DIAGNOSTICS_KERNEL,
+  PROJECT_KERNEL, FOG_UPDATE_KERNELS.semiLagrangian, FOG_UPDATE_KERNELS.macCormack, LIGHT_KERNEL, FIELD_DIAGNOSTICS_KERNEL,
 ];
 
 export const FOG_FIELD_SHADERS = [...new Set(FOG_FIELD_KERNELS.map((spec) => spec.shader))];
@@ -148,10 +151,10 @@ export class FogField {
     this.#kernels.kernel(PROJECT_KERNEL).dispatch(pass, { velocity, pressure: this.pressure, solids: this.solids, velocityOut }, this.size);
   }
 
-  transportFog(pass) {
+  transportFog(pass, isSharp) {
     const nextIndex = 1 - this.#fogIndex;
     this.advect(pass, this.velocity, this.fog, this.advected);
-    this.#kernels.kernel(FOG_UPDATE_KERNEL).dispatch(pass, {
+    this.#kernels.kernel(isSharp ? FOG_UPDATE_KERNELS.macCormack : FOG_UPDATE_KERNELS.semiLagrangian).dispatch(pass, {
       velocity: this.velocity, fog: this.fog, flow: this.flow, advected: this.advected, windReach: this.windReach,
       flowNoise: this.#noise.flow,
       clampSampler: this.clampSampler, repeatSampler: this.repeatSampler, fogOut: this.fogTextures[nextIndex], flowOut: this.flowTextures[nextIndex],

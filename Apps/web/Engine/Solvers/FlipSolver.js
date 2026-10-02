@@ -34,6 +34,7 @@ export class FlipSolver {
   static label = 'FLIP particles';
   static description = 'Particles carry velocity between steps (80% FLIP, 20% PIC), the grid does the pressure.';
   static kernels = [...Object.values(particleKernels(VEC4S_PER_PARTICLE)), PARTICLES_TO_GRID_KERNEL, GRID_UPDATE_KERNEL, GRID_TO_PARTICLES_KERNEL];
+  static advectsFogSharply = false;
 
   #kernels;
   #field;

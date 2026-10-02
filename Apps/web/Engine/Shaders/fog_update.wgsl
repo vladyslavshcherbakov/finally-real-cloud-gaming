@@ -14,6 +14,24 @@ fn fogJustInFront(cell: vec3i) -> f32 {
   return textureLoad(fog, cell - vec3i(0, 0, 1), 0).r;
 }
 
+fn fogAt(cell: vec3i) -> f32 {
+  return textureLoad(fog, clampedToGrid(cell), 0).r;
+}
+
+fn macCormackDensity(cell: vec3i, centre: vec3f, displacement: vec3f, semiLagrangianDensity: f32) -> f32 {
+  let returnTrip = textureSampleLevel(advected, clampSampler, (centre + displacement) / gridSize(), 0.0).r;
+  let correctedDensity = semiLagrangianDensity + 0.5 * (fogAt(cell) - returnTrip);
+  let departureCorner = vec3i(floor(centre - displacement - 0.5));
+  var lowest = 1e9;
+  var highest = -1e9;
+  for (var corner = 0; corner < 8; corner++) {
+    let neighbourDensity = fogAt(departureCorner + vec3i(corner & 1, (corner >> 1) & 1, (corner >> 2) & 1));
+    lowest = min(lowest, neighbourDensity);
+    highest = max(highest, neighbourDensity);
+  }
+  return clamp(correctedDensity, lowest, highest);
+}
+
 fn shareOfPointInsideGrid(point: vec3f) -> f32 {
   let distanceBeyondGrid = max(max(-point, point - gridSize()), vec3f(0.0));
   return clamp(1.0 - max(distanceBeyondGrid.x, max(distanceBeyondGrid.y, distanceBeyondGrid.z)), 0.0, 1.0);
@@ -43,6 +61,7 @@ fn main(@builtin(global_invocation_id) cellId: vec3u) {
   let movedAir = max(textureSampleLevel(flow, clampSampler, departureUvw, 0.0).w * exp(-stepSeconds() / MOVED_AIR_FADE_SECONDS), wind.movedAirShare * windReachHere.r);
 
   var density = textureLoad(advected, cellId, 0).r;
+  if (USE_MACCORMACK) { density = macCormackDensity(cell, centre, displacement, density); }
   density *= mix(1.0, shareOfPointInsideGrid(centre - displacement), movedAir);
   density += min(params.diffusion * stepSeconds(), LARGEST_STABLE_DIFFUSION_STEP) * densityLaplacian(cell);
   let baseDensity = baseFogDensity(centre);
