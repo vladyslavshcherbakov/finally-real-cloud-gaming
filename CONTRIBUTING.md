@@ -14,7 +14,7 @@ The only platform is the browser. `Apps/web` has one page, `index.html`.
 - `Apps/web/App/AppGraph.js` is the composition root. Only it creates the engine, the settings and the storage.
 - `Apps/web/App/main.js` starts the browser build: the canvas, `localStorage`, the frame loop.
 - `Apps/web/freshFilesWorker.js` is a service worker. It makes the browser check every file with the server, so a visit after a deploy gets the new files.
-- `Apps/web/Engine/` holds the GPU engine. `FogEngine` is its entry point, and `Solvers.js` lists the solvers.
+- `Apps/web/Engine/` holds the GPU engine. `FogEngine` is its entry point: it runs the phases, the scene and the frame. `FogSimulation` owns the grid and the solver and encodes one step. `SimulationParams.js` turns settings, scene and grid into the GPU params. `Solvers.js` lists the solvers.
 - `Apps/web/Engine/Field/` holds the fog grid and its shared passes. `Render/` draws the fog over the photo. `Scene/` loads a scene's photo and depth.
 - `Apps/web/Engine/Gpu/` holds the WebGPU layer: device, kernels, binding layouts, the params buffer, the GPU timer.
 - `Apps/web/Engine/Solvers/` holds one class per fluid solver.
@@ -30,7 +30,7 @@ Add a solver in these steps:
 
 Add a setting in these steps:
 1. Add it to `NUMERIC_SETTINGS` in `Shared/Domain/Entities/Settings.js`.
-2. Write it into the params in `FogEngine` and read it in the shader through `params`.
+2. Write it into the params in `SimulationParams.js` and read it in the shader through `params`.
 
 The reference solver is `Apps/web/Engine/Solvers/StableFluidsSolver.js`.
 
@@ -45,7 +45,7 @@ The reference solver is `Apps/web/Engine/Solvers/StableFluidsSolver.js`.
 
 ## Rules the code cannot show
 
-- A GPU texture or buffer is destroyed by the object that created it. `FogEngine` destroys the solver, the field and the scene before it replaces them.
+- A GPU texture or buffer is destroyed by the object that created it. `FogSimulation` destroys the solver and the field, and `FogEngine` destroys the simulation and the scene before it replaces them.
 
 ## Tests
 

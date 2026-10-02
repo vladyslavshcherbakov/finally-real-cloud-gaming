@@ -1,4 +1,5 @@
-import { FogField, FOG_FIELD_KERNELS } from './Field/FogField.js';
+import { FOG_FIELD_KERNELS } from './Field/FogField.js';
+import { FogSimulation } from './FogSimulation.js';
 import { NoiseTextures, NOISE_KERNELS } from './Field/NoiseTextures.js';
 import { ENGINE_PHASES, enginePhaseUpdate } from './EnginePhase.js';
 import { EngineStats } from './EngineStats.js';
@@ -10,7 +11,6 @@ import { simulationParams } from './SimulationParams.js';
 
 const MOST_FRAMES_IN_FLIGHT = 2;
 const FRAME_TIME_SMOOTHING = 0.05;
-const LIGHT_UPDATE_EVERY_FRAMES = 2;
 
 export class FogEngine {
   #device;
@@ -29,14 +29,12 @@ export class FogEngine {
   #diagnosticsLog;
   #noise = null;
   #scene = null;
-  #field = null;
-  #solver = null;
+  #simulation = null;
   #phase = ENGINE_PHASES.starting;
   #elapsedSeconds = 0;
   #frameIndex = 0;
   #framesInFlight = 0;
   #averageFrameSeconds = null;
-  #secondsSinceLight = Infinity;
   #windSourceCount = 0;
   #phaseListeners = new Set();
 
@@ -68,8 +66,8 @@ export class FogEngine {
       phase: this.#phase,
       framesPerSecond: this.#averageFrameSeconds ? 1 / this.#averageFrameSeconds : 0,
       preset: this.#settings.values.quality,
-      gridSize: this.#field?.size ?? null,
-      particleCount: this.#solver?.particleCount ?? 0,
+      gridSize: this.#simulation?.field.size ?? null,
+      particleCount: this.#simulation?.solver.particleCount ?? 0,
       gpuMilliseconds: this.#timer?.milliseconds ?? null,
     });
   }
@@ -123,8 +121,8 @@ export class FogEngine {
       this.#logger.info(`fog not reset: engine is ${this.#phase}`);
       return;
     }
-    this.#resetFog();
-    this.#solver.reset();
+    this.#simulation.resetFog(this.#scene.depthCodes);
+    this.#diagnosticsLog.fogWasReset();
     this.#logger.info('fog reset to its base state');
   }
 
@@ -136,7 +134,7 @@ export class FogEngine {
     if (this.#framesInFlight >= MOST_FRAMES_IN_FLIGHT) return;
     if (this.#frameTarget.resizeToDisplaySize()) this.#rebuildGrid(`canvas resized to ${this.#frameTarget.width}×${this.#frameTarget.height}`);
     this.#elapsedSeconds += frameTime.simulationSeconds;
-    this.#secondsSinceLight += frameTime.simulationSeconds;
+    this.#simulation.advance(frameTime.simulationSeconds);
     this.#diagnosticsLog.advance(frameTime.simulationSeconds);
     this.#frameIndex++;
     this.#writeParams(frameTime);
@@ -169,29 +167,17 @@ export class FogEngine {
     const preset = this.#settings.values.quality;
     const quality = QUALITY_PRESETS[preset];
     const size = gridSize(preset, this.#frameTarget.width / this.#frameTarget.height);
-    this.#releaseGrid();
-    this.#field = new FogField(this.#device, this.#kernels, this.#noise, size);
-    this.#solver = this.#createSolver();
-    this.#renderer.resizeFogLayer(...fogLayerSize(this.#frameTarget.width, this.#frameTarget.height, quality));
-    this.#secondsSinceLight = Infinity;
-    this.#fogWasReset();
-    this.#writeParams({ realSeconds: 0, simulationSeconds: 0 });
-    this.#secondsSinceLight = 0;
-    this.#submitComputeWork('prepare grid', (pass) => {
-      this.#field.buildSolids(pass, this.#scene.depthCodes);
-      this.#field.resetFog(pass, this.#scene.depthCodes);
-      this.#field.computeLight(pass);
-    });
-    this.#logger.info(`grid rebuilt at ${preset} ${size.join('×')}: ${reason}`);
-  }
-
-  #releaseGrid() {
-    this.#solver?.destroy();
-    this.#field?.destroy();
-    this.#solver = null;
-    this.#field = null;
-    this.#kernels.forgetBindGroups();
+    this.#simulation?.destroy();
     this.#renderer.forgetBindGroups();
+    this.#simulation = new FogSimulation({
+      device: this.#device, kernels: this.#kernels, noise: this.#noise, gridSize: size,
+      Solver: solverClass(this.#settings.values.solver), quality,
+    });
+    this.#renderer.resizeFogLayer(...fogLayerSize(this.#frameTarget.width, this.#frameTarget.height, quality));
+    this.#diagnosticsLog.fogWasReset();
+    this.#writeParams({ realSeconds: 0, simulationSeconds: 0 });
+    this.#simulation.prepare(this.#scene.depthCodes);
+    this.#logger.info(`grid rebuilt at ${preset} ${size.join('×')}: ${reason}`);
   }
 
   async #replaceSolver(reason) {
@@ -201,48 +187,21 @@ export class FogEngine {
       this.#logger.info(`solver ${requestedSolverId} not applied: the setting or the engine changed while it compiled`);
       return;
     }
-    this.#solver.destroy();
-    this.#kernels.forgetBindGroups();
-    this.#solver = this.#createSolver();
-    this.#resetFog();
-    this.#logger.info(`solver replaced by ${requestedSolverId} and the fog reset to its base state: ${reason}`);
-  }
-
-  #resetFog() {
-    this.#submitComputeWork('reset fog', (pass) => this.#field.resetFog(pass, this.#scene.depthCodes));
-    this.#secondsSinceLight = Infinity;
-    this.#fogWasReset();
-  }
-
-  #fogWasReset() {
+    this.#simulation.replaceSolver(solverClass(requestedSolverId), QUALITY_PRESETS[this.#settings.values.quality], this.#scene.depthCodes);
     this.#diagnosticsLog.fogWasReset();
-  }
-
-  #createSolver() {
-    const Solver = solverClass(this.#settings.values.solver);
-    const solver = new Solver({ device: this.#device, kernels: this.#kernels, field: this.#field, quality: QUALITY_PRESETS[this.#settings.values.quality] });
-    solver.reset();
-    return solver;
-  }
-
-  #submitComputeWork(label, encodePasses) {
-    const encoder = this.#device.createCommandEncoder({ label });
-    const pass = encoder.beginComputePass({ label });
-    encodePasses(pass);
-    pass.end();
-    this.#device.queue.submit([encoder.finish()]);
+    this.#logger.info(`solver replaced by ${requestedSolverId} and the fog reset to its base state: ${reason}`);
   }
 
   #writeParams(frameTime) {
     const settings = this.#settings.values;
     this.#params.set({
       ...simulationParams({
-        settings, scene: this.#scene, gridSize: this.#field.size, cellCount: this.#field.cellCount,
+        settings, scene: this.#scene, gridSize: this.#simulation.field.size, cellCount: this.#simulation.field.cellCount,
         canvasAspect: this.#frameTarget.width / this.#frameTarget.height,
         elapsedSeconds: this.#elapsedSeconds, frameIndex: this.#frameIndex, stepSeconds: frameTime.simulationSeconds,
-        secondsSinceLight: this.#secondsSinceLight,
+        secondsSinceLight: this.#simulation.secondsSinceLight,
       }),
-      ...this.#solver.solverParams(frameTime),
+      ...this.#simulation.solver.solverParams(frameTime),
     });
     const windSources = this.#pointerWind.windSources({
       nowSeconds: this.#clock.nowSeconds(),
@@ -259,24 +218,19 @@ export class FogEngine {
     const isTimed = this.#timer?.canMeasureThisFrame ?? false;
     const encoder = this.#device.createCommandEncoder({ label: 'frame' });
     const pass = encoder.beginComputePass({ label: 'simulation', timestampWrites: isTimed ? this.#timer.startWrites : undefined });
-    this.#field.measureWindReach(pass, this.#scene.depthCodes);
-    this.#solver.step(pass);
-    this.#field.transportFog(pass);
-    if (this.#frameIndex % LIGHT_UPDATE_EVERY_FRAMES === 0) {
-      this.#field.computeLight(pass);
-      this.#secondsSinceLight = 0;
-    }
-    const diagnostics = this.#field.diagnostics;
+    this.#simulation.encodeStep(pass, this.#scene.depthCodes, this.#frameIndex);
+    const field = this.#simulation.field;
+    const diagnostics = field.diagnostics;
     const isDiagnosed = this.#diagnosticsLog.isReadingDue && diagnostics.canMeasure;
-    if (isDiagnosed) diagnostics.measure(pass, this.#field);
+    if (isDiagnosed) diagnostics.measure(pass, field);
     pass.end();
-    this.#renderer.render(encoder, this.#frameTarget.currentView(), this.#field, this.#scene, isTimed ? this.#timer.endWrites : undefined);
+    this.#renderer.render(encoder, this.#frameTarget.currentView(), field, this.#scene, isTimed ? this.#timer.endWrites : undefined);
     if (isTimed) this.#timer.copyResults(encoder);
     if (isDiagnosed) diagnostics.copyForReading(encoder);
     this.#device.queue.submit([encoder.finish()]);
     if (isDiagnosed) {
       this.#diagnosticsLog.report(diagnostics.read(), {
-        solverId: this.#settings.values.solver, preset: this.#settings.values.quality, gridSize: this.#field.size,
+        solverId: this.#settings.values.solver, preset: this.#settings.values.quality, gridSize: field.size,
         framesPerSecond: this.stats.framesPerSecond, windSourceCount: this.#windSourceCount,
       });
     }
