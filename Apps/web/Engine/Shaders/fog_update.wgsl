@@ -3,8 +3,10 @@
 const LARGEST_STABLE_DIFFUSION_STEP = 0.16;
 const MOVED_AIR_FADE_SECONDS = 2.0;
 
-fn densityAt(cell: vec3i) -> f32 {
-  return textureLoad(fog, clampedToGrid(cell), 0).r;
+fn neighbourDensity(neighbour: vec3i, ownDensity: f32) -> f32 {
+  let cell = clampedToGrid(neighbour);
+  if (textureLoad(windReach, cell, 0).b < 0.5) { return ownDensity; }
+  return textureLoad(fog, cell, 0).r;
 }
 
 fn shareOfPointInsideGrid(point: vec3f) -> f32 {
@@ -13,9 +15,10 @@ fn shareOfPointInsideGrid(point: vec3f) -> f32 {
 }
 
 fn densityLaplacian(cell: vec3i) -> f32 {
-  return densityAt(cell + vec3i(1, 0, 0)) + densityAt(cell - vec3i(1, 0, 0))
-    + densityAt(cell + vec3i(0, 1, 0)) + densityAt(cell - vec3i(0, 1, 0))
-    + densityAt(cell + vec3i(0, 0, 1)) + densityAt(cell - vec3i(0, 0, 1)) - 6.0 * densityAt(cell);
+  let ownDensity = textureLoad(fog, cell, 0).r;
+  return neighbourDensity(cell + vec3i(1, 0, 0), ownDensity) + neighbourDensity(cell - vec3i(1, 0, 0), ownDensity)
+    + neighbourDensity(cell + vec3i(0, 1, 0), ownDensity) + neighbourDensity(cell - vec3i(0, 1, 0), ownDensity)
+    + neighbourDensity(cell + vec3i(0, 0, 1), ownDensity) + neighbourDensity(cell - vec3i(0, 0, 1), ownDensity) - 6.0 * ownDensity;
 }
 
 fn phaseRestarted(phaseOffset: f32) -> bool {
