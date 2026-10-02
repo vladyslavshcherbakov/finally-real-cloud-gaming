@@ -5,7 +5,8 @@ const FOG_SUM_UNITS_PER_BASE_FOG = 100;
 export const FIELD_DIAGNOSTICS_KERNEL = {
   shader: 'field_diagnostics',
   bindings: {
-    velocity: 'texture3d', fog: 'texture3d', acceleration: 'texture3d', vorticity: 'texture3d',
+    velocity: 'texture3d', velocityA: 'texture3d', velocityB: 'texture3d', velocityC: 'texture3d',
+    fog: 'texture3d', acceleration: 'texture3d', vorticity: 'texture3d',
     pressure: 'read:array<f32>', divergence: 'read:array<f32>', stats: 'readWrite:array<atomic<u32>>',
   },
 };
@@ -33,7 +34,7 @@ export class FieldDiagnostics {
   measure(pass, field) {
     this.#device.queue.writeBuffer(this.#stats, 0, new Uint32Array(STATS_BYTES / 4));
     this.#kernels.kernel(FIELD_DIAGNOSTICS_KERNEL).dispatch(pass, {
-      velocity: field.velocity, fog: field.fog, acceleration: field.acceleration, vorticity: field.vorticity,
+      velocity: field.velocity, velocityA: field.velocities[0], velocityB: field.velocities[1], velocityC: field.velocities[2], fog: field.fog, acceleration: field.acceleration, vorticity: field.vorticity,
       pressure: field.pressure, divergence: field.divergence, stats: this.#stats,
     }, field.size);
   }

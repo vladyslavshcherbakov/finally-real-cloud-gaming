@@ -15,5 +15,6 @@ fn main(@builtin(global_invocation_id) cellId: vec3u) {
   let neighbours = neighbourPressure(cell);
   if (neighbours.weightTotal <= 0.0) { return; }
   let solvedPressure = (neighbours.weightedSum - rightHandSide[index]) / neighbours.weightTotal;
-  pressure[index] = mix(pressure[index], solvedPressure, OVER_RELAXATION);
+  let relaxedPressure = mix(pressure[index], solvedPressure, OVER_RELAXATION);
+  pressure[index] = select(0.0, relaxedPressure, isFiniteNumber(relaxedPressure));
 }

@@ -330,7 +330,7 @@ export class FogEngine {
       + ` ${Math.round(this.stats.framesPerSecond)} fps, ${this.#windSourceCount} wind sources`
       + ` | fastest air near ${shown(stats.nearSpeedMax)} far ${shown(stats.farSpeedMax)} cells/s`
       + ` | fog near ${shareOf(stats.nearFog, this.#fogAtFirstDiagnostics.near)} far ${shareOf(stats.farFog, this.#fogAtFirstDiagnostics.far)} of the first reading`
-      + ` | cells not finite: velocity ${stats.brokenVelocityCells} fog ${stats.brokenFogCells} pressure ${stats.brokenPressureCells}`
+      + ` | cells not finite: velocity at any step ${stats.brokenVelocityCells} fog ${stats.brokenFogCells} pressure ${stats.brokenPressureCells}`
       + ` | largest acceleration ${shown(stats.accelerationMax)} vorticity ${shown(stats.vorticityMax)}`
       + ` pressure ${shown(stats.pressureMax)} divergence ${shown(stats.divergenceMax)}`);
   }

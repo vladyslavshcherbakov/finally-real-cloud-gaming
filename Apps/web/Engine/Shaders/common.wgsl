@@ -25,6 +25,20 @@ fn cellIndex(cell: vec3i) -> u32 {
 
 fn cellCentre(cell: vec3u) -> vec3f { return vec3f(cell) + 0.5; }
 
+const NOT_FINITE_EXPONENT = 0x7f800000u;
+
+fn isFiniteNumber(value: f32) -> bool {
+  return (bitcast<u32>(value) & NOT_FINITE_EXPONENT) != NOT_FINITE_EXPONENT;
+}
+
+fn isFiniteVector(value: vec3f) -> bool {
+  return isFiniteNumber(value.x) && isFiniteNumber(value.y) && isFiniteNumber(value.z);
+}
+
+fn finiteOrZero(value: vec3f) -> vec3f {
+  return select(vec3f(0.0), value, isFiniteVector(value));
+}
+
 fn sliceDepthMetres(slice: f32) -> f32 {
   return params.nearSliceMetres * exp(params.sliceLogRange * slice / params.gridDepth);
 }

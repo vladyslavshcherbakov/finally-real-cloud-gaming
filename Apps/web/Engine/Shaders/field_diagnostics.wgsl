@@ -1,4 +1,3 @@
-const NOT_FINITE_EXPONENT = 0x7f800000u;
 const FOG_SUM_UNITS_PER_BASE_FOG = 100.0;
 const LARGEST_COUNTED_FOG = 1000.0;
 
@@ -14,14 +13,6 @@ const PRESSURE_MAX = 8u;
 const DIVERGENCE_MAX = 9u;
 const BROKEN_PRESSURE_CELLS = 10u;
 
-fn isFinite(value: f32) -> bool {
-  return (bitcast<u32>(value) & NOT_FINITE_EXPONENT) != NOT_FINITE_EXPONENT;
-}
-
-fn isFiniteVector(value: vec3f) -> bool {
-  return isFinite(value.x) && isFinite(value.y) && isFinite(value.z);
-}
-
 fn recordMax(slot: u32, value: f32) {
   atomicMax(&stats[slot], bitcast<u32>(abs(value)));
 }
@@ -32,14 +23,13 @@ fn main(@builtin(global_invocation_id) cellId: vec3u) {
   let isNear = sliceDepthMetres(f32(cellId.z) + 0.5) < NEAREST_FLOW_DEPTH_METRES;
 
   let cellVelocity = textureLoad(velocity, cellId, 0).xyz;
-  if (isFiniteVector(cellVelocity)) {
-    recordMax(select(FAR_SPEED_MAX, NEAR_SPEED_MAX, isNear), length(cellVelocity));
-  } else {
-    atomicAdd(&stats[BROKEN_VELOCITY_CELLS], 1u);
-  }
+  if (isFiniteVector(cellVelocity)) { recordMax(select(FAR_SPEED_MAX, NEAR_SPEED_MAX, isNear), length(cellVelocity)); }
+  let everyStepVelocityIsFinite = isFiniteVector(textureLoad(velocityA, cellId, 0).xyz)
+    && isFiniteVector(textureLoad(velocityB, cellId, 0).xyz) && isFiniteVector(textureLoad(velocityC, cellId, 0).xyz);
+  if (!everyStepVelocityIsFinite) { atomicAdd(&stats[BROKEN_VELOCITY_CELLS], 1u); }
 
   let cellFog = textureLoad(fog, cellId, 0).r;
-  if (isFinite(cellFog)) {
+  if (isFiniteNumber(cellFog)) {
     let fogUnits = u32(clamp(cellFog, 0.0, LARGEST_COUNTED_FOG) * FOG_SUM_UNITS_PER_BASE_FOG);
     atomicAdd(&stats[select(FAR_FOG_SUM, NEAR_FOG_SUM, isNear)], fogUnits);
   } else {
@@ -49,12 +39,12 @@ fn main(@builtin(global_invocation_id) cellId: vec3u) {
   let cellAcceleration = textureLoad(acceleration, cellId, 0).xyz;
   if (isFiniteVector(cellAcceleration)) { recordMax(ACCELERATION_MAX, length(cellAcceleration)); }
   let vorticityLength = textureLoad(vorticity, cellId, 0).w;
-  if (isFinite(vorticityLength)) { recordMax(VORTICITY_MAX, vorticityLength); }
+  if (isFiniteNumber(vorticityLength)) { recordMax(VORTICITY_MAX, vorticityLength); }
 
   let index = cellIndex(vec3i(cellId));
   let cellPressure = pressure[index];
   let cellDivergence = divergence[index];
-  if (isFinite(cellPressure) && isFinite(cellDivergence)) {
+  if (isFiniteNumber(cellPressure) && isFiniteNumber(cellDivergence)) {
     recordMax(PRESSURE_MAX, cellPressure);
     recordMax(DIVERGENCE_MAX, cellDivergence);
   } else {
