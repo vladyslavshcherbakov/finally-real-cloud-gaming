@@ -20,11 +20,13 @@ export const PARAM_FIELDS = [
   'noiseSlabStart', 'lightBlend',
 ];
 
-export const WIND_SOURCE_FIELDS = ['u', 'v', 'velocityU', 'velocityV', 'radius', 'strength', 'outwardStrength'];
-export const MAX_WIND_SOURCES = 8;
-
 const UNIFORM_ALIGNMENT_FLOATS = 4;
-const WIND_SOURCE_STRIDE_FLOATS = Math.ceil(WIND_SOURCE_FIELDS.length / UNIFORM_ALIGNMENT_FLOATS) * UNIFORM_ALIGNMENT_FLOATS;
+
+const WIND_SOURCES = {
+  structName: 'WindSourceParams', arrayName: 'windSources', countParam: 'windSourceCount',
+  fields: ['u', 'v', 'velocityU', 'velocityV', 'radius', 'strength', 'outwardStrength'], maxCount: 8,
+};
+const PARAM_ARRAYS = [WIND_SOURCES];
 
 export class UnknownParam extends Error {
   constructor(name) {
@@ -37,11 +39,10 @@ export class ParamsBuffer {
   #device;
   #floats;
   #offsetByName = new Map(PARAM_FIELDS.map((name, offset) => [name, offset]));
-  #windSourcesOffset = alignedFieldCount();
 
   constructor(device) {
     this.#device = device;
-    this.#floats = new Float32Array(this.#windSourcesOffset + MAX_WIND_SOURCES * WIND_SOURCE_STRIDE_FLOATS);
+    this.#floats = new Float32Array(arrayOffset(PARAM_ARRAYS.length));
     this.buffer = device.createBuffer({
       label: 'params',
       size: this.#floats.byteLength,
@@ -50,18 +51,17 @@ export class ParamsBuffer {
   }
 
   static wgslDeclarations() {
-    const paddingCount = alignedFieldCount() - PARAM_FIELDS.length;
-    const paddingFields = Array.from({ length: paddingCount }, (_, i) => `  padding${i}: f32,`);
-    const windSourcePaddingFields = Array.from({ length: WIND_SOURCE_STRIDE_FLOATS - WIND_SOURCE_FIELDS.length }, (_, i) => `  padding${i}: f32,`);
     return [
-      'struct WindSourceParams {',
-      ...WIND_SOURCE_FIELDS.map((name) => `  ${name}: f32,`),
-      ...windSourcePaddingFields,
-      '}',
+      ...PARAM_ARRAYS.flatMap((paramArray) => [
+        `struct ${paramArray.structName} {`,
+        ...paramArray.fields.map((name) => `  ${name}: f32,`),
+        ...paddingFields(strideFloats(paramArray) - paramArray.fields.length),
+        '}',
+      ]),
       'struct Params {',
       ...PARAM_FIELDS.map((name) => `  ${name}: f32,`),
-      ...paddingFields,
-      `  windSources: array<WindSourceParams, ${MAX_WIND_SOURCES}>,`,
+      ...paddingFields(alignedFieldCount() - PARAM_FIELDS.length),
+      ...PARAM_ARRAYS.map((paramArray) => `  ${paramArray.arrayName}: array<${paramArray.structName}, ${paramArray.maxCount}>,`),
       '}',
     ].join('\n');
   }
@@ -75,20 +75,40 @@ export class ParamsBuffer {
   }
 
   setWindSources(windSources) {
-    const sourceCount = Math.min(windSources.length, MAX_WIND_SOURCES);
-    for (let i = 0; i < sourceCount; i++) {
-      const source = windSources[i];
-      const values = WIND_SOURCE_FIELDS.map((name) => Number(source[name]));
-      this.#floats.set(values, this.#windSourcesOffset + i * WIND_SOURCE_STRIDE_FLOATS);
-    }
-    this.set({ windSourceCount: sourceCount });
+    this.#setArray(WIND_SOURCES, windSources);
   }
 
   upload() {
     this.#device.queue.writeBuffer(this.buffer, 0, this.#floats);
   }
+
+  #setArray(paramArray, items) {
+    const itemCount = Math.min(items.length, paramArray.maxCount);
+    const firstOffset = arrayOffset(PARAM_ARRAYS.indexOf(paramArray));
+    for (let i = 0; i < itemCount; i++) {
+      const values = paramArray.fields.map((name) => Number(items[i][name]));
+      this.#floats.set(values, firstOffset + i * strideFloats(paramArray));
+    }
+    this.set({ [paramArray.countParam]: itemCount });
+  }
 }
 
 function alignedFieldCount() {
-  return Math.ceil(PARAM_FIELDS.length / UNIFORM_ALIGNMENT_FLOATS) * UNIFORM_ALIGNMENT_FLOATS;
+  return alignedFloats(PARAM_FIELDS.length);
+}
+
+function strideFloats(paramArray) {
+  return alignedFloats(paramArray.fields.length);
+}
+
+function arrayOffset(arrayIndex) {
+  return PARAM_ARRAYS.slice(0, arrayIndex).reduce((offset, paramArray) => offset + paramArray.maxCount * strideFloats(paramArray), alignedFieldCount());
+}
+
+function alignedFloats(floatCount) {
+  return Math.ceil(floatCount / UNIFORM_ALIGNMENT_FLOATS) * UNIFORM_ALIGNMENT_FLOATS;
+}
+
+function paddingFields(count) {
+  return Array.from({ length: count }, (_, i) => `  padding${i}: f32,`);
 }
