@@ -1,6 +1,6 @@
 //#include base_fog
 
-const PULL_TOWARD_SWIRLING_AIR_PER_SECOND = vec3f(0.75, 0.75, 3.0);
+const PULL_TOWARD_SWIRLING_AIR_PER_SECOND = vec3f(0.6, 0.6, 1.2);
 
 fn vorticityLengthAt(cell: vec3i) -> f32 {
   return textureLoad(vorticity, clampedToGrid(cell), 0).w;
