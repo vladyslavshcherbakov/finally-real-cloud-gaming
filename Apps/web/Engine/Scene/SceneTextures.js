@@ -10,6 +10,7 @@ export class SceneAssetLoadFailed extends Error {
 
 const MEASUREMENT_WIDTH = 96;
 const DEPTH_CODE_LEVELS = 65535;
+const BITMAP_OPTIONS = { colorSpaceConversion: 'none', premultiplyAlpha: 'none' };
 
 const MIPMAP_SHADER = `
 @group(0) @binding(0) var source: texture_2d<f32>;
@@ -39,23 +40,33 @@ export class SceneTextures {
       loadBitmap(new URL(description.depthPath, assetBaseUrl), description.depthPath),
     ]);
     const depthMetres = decodedDepthMetres(description, depthBitmap);
-    const depthMetresAt = depthLookup(depthMetres, depthBitmap.width, depthBitmap.height);
-    const scene = new SceneTextures({
-      description,
-      photo: photoTexture(device, photoBitmap),
-      depthCodes: depthCodeTexture(device, description, depthMetres, depthBitmap.width, depthBitmap.height),
-      depthMetres,
-      depthWidth: depthBitmap.width,
-      depthHeight: depthBitmap.height,
-      measurements: measureScene({
-        ...linearPixelsForMeasurement(photoBitmap),
-        depthMetresAt,
-        skyDepthMetres: description.depthFarMetres,
-      }),
-    });
+    const scene = SceneTextures.#fromPhotoAndDepth(device, description, photoBitmap, depthMetres, depthBitmap.width, depthBitmap.height);
     photoBitmap.close();
     depthBitmap.close();
     return scene;
+  }
+
+  static async fromPhotoScene(device, photoScene) {
+    const photoBitmap = await createImageBitmap(photoScene.photo, BITMAP_OPTIONS);
+    const scene = SceneTextures.#fromPhotoAndDepth(device, photoScene.description, photoBitmap, photoScene.depthMetres, photoScene.depthWidth, photoScene.depthHeight);
+    photoBitmap.close();
+    return scene;
+  }
+
+  static #fromPhotoAndDepth(device, description, photoBitmap, depthMetres, depthWidth, depthHeight) {
+    return new SceneTextures({
+      description,
+      photo: photoTexture(device, photoBitmap),
+      depthCodes: depthCodeTexture(device, description, depthMetres, depthWidth, depthHeight),
+      depthMetres,
+      depthWidth,
+      depthHeight,
+      measurements: measureScene({
+        ...linearPixelsForMeasurement(photoBitmap),
+        depthMetresAt: depthLookup(depthMetres, depthWidth, depthHeight),
+        skyDepthMetres: description.depthFarMetres,
+      }),
+    });
   }
 
   destroy() {
@@ -67,7 +78,7 @@ export class SceneTextures {
 async function loadBitmap(url, path) {
   const response = await fetch(url);
   if (!response.ok) throw new SceneAssetLoadFailed(path, response.status);
-  return createImageBitmap(await response.blob(), { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
+  return createImageBitmap(await response.blob(), BITMAP_OPTIONS);
 }
 
 function pixelBytes(bitmap, width = bitmap.width, height = bitmap.height) {
