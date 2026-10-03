@@ -61,7 +61,7 @@ export class PhotoProbePanel {
     const reportText = this.#reportText.textContent;
     let copyResult;
     try {
-      await navigator.clipboard.writeText(reportText);
+      await navigator.clipboard.write([new ClipboardItem({ 'text/plain': new Blob([reportText], { type: 'text/plain' }) })]);
       copyResult = 'Copied';
     } catch (clipboardError) {
       this.#logger.info(`[PHOTO-PROBE] clipboard refused (${clipboardError.message}), copying through a selection`);

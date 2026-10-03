@@ -21,6 +21,7 @@
   background: var(--panel-background);
   -webkit-user-select: text;
   user-select: text;
+  -webkit-touch-callout: default;
 }
 .photo-probe-panel pre {
   margin: 0 0 10px;
