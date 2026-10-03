@@ -1,6 +1,6 @@
 //#include base_fog
 
-const IMPULSE_FADE_PER_SECOND = vec3f(0.4, 0.4, 0.5);
+const IMPULSE_FADE_PER_SECOND = vec3f(0.5, 0.5, 1.2);
 const IMPULSE_SHARE_OF_WIND = 0.6;
 
 @compute @workgroup_size(WORKGROUP_SIZE_X, WORKGROUP_SIZE_Y, WORKGROUP_SIZE_Z)
