@@ -3,6 +3,8 @@
 const LARGEST_STABLE_DIFFUSION_STEP = 0.16;
 const MOVED_AIR_FADE_SECONDS = 2.0;
 const VORTEX_EYE_DISSIPATION_PER_SECOND = 6.0;
+const LAST_HAZE_SHARE_OF_BASE_FOG = 0.1;
+const LAST_HAZE_MIXING_SPEED_UP = 2.0;
 
 struct CellMotion {
   centre: vec3f,
@@ -45,7 +47,7 @@ fn updatedDensity(cell: vec3i, motion: CellMotion, movedAir: f32, vortexEyeShare
   density = densityStillInsideTheGrid(density, motion, movedAir);
   density = densityAfterCreep(density, cell);
   density = densityAfterReturning(density, motion.centre);
-  density = densityAfterWakeMixing(density, movedAir, windReachHere);
+  density = densityAfterWakeMixing(density, movedAir, windReachHere, baseFogDensity(motion.centre));
   return densityAfterVortexEye(density, vortexEyeShare, windReachHere);
 }
 
@@ -84,8 +86,10 @@ fn densityAfterReturning(density: f32, centre: vec3f) -> f32 {
   return density + (baseFogDensity(centre) - density) * (1.0 - exp(-params.returnRate * stepSeconds()));
 }
 
-fn densityAfterWakeMixing(density: f32, movedAir: f32, windReachHere: vec4f) -> f32 {
-  return density * exp(-params.wakeMixing * movedAir * windReachHere.r * windReachHere.g * stepSeconds());
+fn densityAfterWakeMixing(density: f32, movedAir: f32, windReachHere: vec4f, baseFog: f32) -> f32 {
+  let shareOfBaseFogLeft = density / max(baseFog, 1e-4);
+  let lastHazeSpeedUp = 1.0 + LAST_HAZE_MIXING_SPEED_UP * (1.0 - smoothstep(0.0, LAST_HAZE_SHARE_OF_BASE_FOG, shareOfBaseFogLeft));
+  return density * exp(-params.wakeMixing * movedAir * windReachHere.r * windReachHere.g * lastHazeSpeedUp * stepSeconds());
 }
 
 fn densityAfterVortexEye(density: f32, vortexEyeShare: f32, windReachHere: vec4f) -> f32 {
