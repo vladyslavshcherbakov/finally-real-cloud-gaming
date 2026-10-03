@@ -68,10 +68,11 @@ fn detailNoiseAt(viewPoint: vec3f, depthMetres: f32, firstPhaseOffset: vec3f, se
   return coarse * 0.75 + fine * 0.25;
 }
 
-fn densityWithDetail(gridDensity: f32, detail: f32) -> f32 {
-  let eroded = clamp(remap(gridDensity, (1.0 - detail) * params.erosion, 1.0, 0.0, 1.0), 0.0, 4.0);
-  let varied = gridDensity * (0.35 + 1.3 * smoothstep(0.2, 0.8, detail));
-  return mix(gridDensity, min(eroded, varied), params.detailAmount);
+fn densityWithDetail(gridDensity: f32, shareOfMeanBaseFog: f32, detail: f32) -> f32 {
+  let eroded = clamp(remap(shareOfMeanBaseFog, (1.0 - detail) * params.erosion, 1.0, 0.0, 1.0), 0.0, 4.0);
+  let varied = shareOfMeanBaseFog * (0.35 + 1.3 * smoothstep(0.2, 0.8, detail));
+  let detailedShare = mix(shareOfMeanBaseFog, min(eroded, varied), params.detailAmount);
+  return gridDensity * detailedShare / max(shareOfMeanBaseFog, 1e-4);
 }
 
 fn sunVisibility(opticalDepthToSun: f32) -> f32 {
@@ -101,10 +102,6 @@ fn boundedBySky(scatteredLight: vec3f) -> vec3f {
   return scatteredLight * (brightestFogLuminance / lightLuminance);
 }
 
-fn extinctionPerBaseFog(ray: ViewRay, sampleUvw: vec3f) -> f32 {
-  return textureSampleLevel(windReach, clampSampler, sampleUvw, 0.0).a / fogMetresInFrontOf(ray.surfaceDepthMetres);
-}
-
 fn fogAlongRay(ray: ViewRay) -> FogLight {
   var fogLight = FogLight(vec3f(0.0), 1.0);
   let endMetres = min(ray.surfaceDepthMetres, params.farSliceMetres);
@@ -120,8 +117,10 @@ fn fogAlongRay(ray: ViewRay) -> FogLight {
     if (fogCell.r < FAINTEST_FOG) { continue; }
     let viewPoint = ray.direction * middleMetres * ray.metresPerDepthMetre;
     let secondPhaseOffset = textureSampleLevel(flow, clampSampler, sampleUvw, 0.0).xyz;
-    let extinction = densityWithDetail(fogCell.r, detailNoiseAt(viewPoint, middleMetres, fogCell.yzw, secondPhaseOffset))
-      * extinctionPerBaseFog(ray, sampleUvw);
+    let openingPerMeanBaseFog = textureSampleLevel(windReach, clampSampler, sampleUvw, 0.0).a;
+    let shareOfMeanBaseFog = fogCell.r * openingPerMeanBaseFog / max(params.openingOpticalDepth, 1e-4);
+    let extinction = densityWithDetail(fogCell.r, shareOfMeanBaseFog, detailNoiseAt(viewPoint, middleMetres, fogCell.yzw, secondPhaseOffset))
+      * openingPerMeanBaseFog / fogMetresInFrontOf(ray.surfaceDepthMetres);
     let segmentTransmittance = exp(-extinction * (farMetres - nearMetres) * ray.metresPerDepthMetre);
     fogLight.scattered += fogLight.transmittance * lightReachingFog(ray, viewPoint, sampleUvw) * (1.0 - segmentTransmittance);
     fogLight.transmittance *= segmentTransmittance;
