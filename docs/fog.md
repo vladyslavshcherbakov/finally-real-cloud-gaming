@@ -44,3 +44,6 @@
 - Changing the algorithm or the quality starts the fog again from its base state.
 - The settings the player changed are kept in the browser for the next visit. The others follow the defaults of the current version.
 - "Next scene" opens another scene from the manifest, when there is more than one.
+- "Load photo" opens a photo from the device as the scene. The photo must hold a depth map: a photo taken in Portrait mode on an iPhone does. The browser reads the depth map, turns it into distances and builds the scene on the device. Nothing is sent anywhere.
+- A photo without a depth map, or one the browser cannot open, leaves the scene as it is, and a message says why. Safari opens iPhone photos. Other browsers may not.
+- A loaded photo stays until the page reloads. "Next scene" then switches between it and the scenes of the manifest.

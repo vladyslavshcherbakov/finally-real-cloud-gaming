@@ -20,6 +20,7 @@ export class FogEngine {
   #settings;
   #pointerWind;
   #scenes;
+  #photoScene = null;
   #assetBaseUrl;
   #random;
   #logger;
@@ -90,25 +91,38 @@ export class FogEngine {
   }
 
   async nextSceneRequested() {
+    const sceneDescriptions = this.#photoScene === null ? this.#scenes : [...this.#scenes, this.#photoScene.description];
+    await this.#showScene(chooseNextScene(sceneDescriptions, this.#scene?.description.id, this.#random));
+  }
+
+  async photoSceneChosen(photoScene) {
+    const previousPhotoScene = this.#photoScene;
+    const isShown = await this.#showScene(photoScene.description);
+    if (!isShown) this.#photoScene = previousPhotoScene;
+    return isShown;
+  }
+
+  async #showScene(description) {
     if (this.#phase === ENGINE_PHASES.loadingScene || this.#phase === ENGINE_PHASES.deviceLost) {
-      this.#logger.info(`next scene not loaded: engine is ${this.#phase}`);
-      return;
+      this.#logger.info(`scene ${description.id} not loaded: engine is ${this.#phase}`);
+      return false;
     }
-    const description = chooseNextScene(this.#scenes, this.#scene?.description.id, this.#random);
     this.#enterPhase(ENGINE_PHASES.loadingScene);
     this.#logger.info(`loading scene ${description.id}`);
     let loadedScene;
     try {
-      loadedScene = await SceneTextures.load(this.#device, description, this.#assetBaseUrl);
+      loadedScene = description === this.#photoScene?.description
+        ? await SceneTextures.fromPhotoScene(this.#device, this.#photoScene)
+        : await SceneTextures.load(this.#device, description, this.#assetBaseUrl);
     } catch (loadError) {
       this.#logger.error(`scene ${description.id} not loaded: ${loadError.message}`);
       this.#enterPhase(this.#scene ? ENGINE_PHASES.running : ENGINE_PHASES.sceneUnavailable);
-      return;
+      return false;
     }
     if (this.#phase === ENGINE_PHASES.deviceLost) {
       loadedScene.destroy();
       this.#logger.info(`scene ${description.id} dropped: the device was lost while it loaded`);
-      return;
+      return false;
     }
     this.#scene?.destroy();
     this.#renderer.forgetBindGroups();
@@ -116,6 +130,7 @@ export class FogEngine {
     this.#logger.info(`scene ${description.id} loaded: fog reaches ${loadedScene.measurements.fogReachMetres.toFixed(0)} m`);
     this.#rebuildGrid(`scene ${description.id} loaded`);
     this.#enterPhase(ENGINE_PHASES.running);
+    return true;
   }
 
   resetFogRequested() {

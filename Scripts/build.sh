@@ -26,7 +26,7 @@ sed -e 's#href="Features/#href="Apps/web/Features/#' -e 's#src="App/#src="Apps/w
 {
   sed -n '/<title>/p' "$siteFolder/index.html"
   echo '<style>'
-  cat Apps/web/Features/Settings/SettingsPanel.css Apps/web/Features/PhotoProbe/PhotoProbePanel.css
+  cat Apps/web/Features/Settings/SettingsPanel.css Apps/web/Features/PhotoProbe/PhotoProbePanel.css Apps/web/Features/PhotoScene/PhotoSceneLoader.css
   echo '</style>'
   sed -n '/<body>/,/<\/body>/p' "$siteFolder/index.html" | grep -v '</\?body>'
 } > "$siteFolder/artifact-page.html"

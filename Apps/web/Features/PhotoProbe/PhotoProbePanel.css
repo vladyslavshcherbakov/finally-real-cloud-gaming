@@ -1,6 +1,6 @@
 .photo-probe-button {
   position: fixed;
-  left: 12px;
+  right: 12px;
   bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   padding: 8px 12px;
   border: 1px solid var(--control-border);

@@ -43,6 +43,10 @@ Scripts/test.sh
 - `build/site/` is the same site as a self-contained folder for any other static host.
 - `build/site/artifact-page.html` is the page for a Claude artifact. Publish it with every file of `build/site/` at the same relative path.
 
+## Play with your own photo
+
+Tap "Load photo" and pick a photo taken in Portrait mode on an iPhone. The game reads the depth map inside the photo in the browser and covers the photo with fog. Safari opens such photos. The photo stays until the page reloads.
+
 ## Add a scene
 
 ```bash

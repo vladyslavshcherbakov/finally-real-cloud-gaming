@@ -96,6 +96,10 @@ export class EnvironmentPage {
     await this.page.evaluate(() => window.environment.showNextScene());
   }
 
+  async choosePhotoScene() {
+    return this.page.evaluate(() => window.environment.choosePhotoScene());
+  }
+
   async dragMouse({ fromX, toX, y, moves, framesPerMove, passes = 1 }) {
     await this.page.mouse.move(fromX, y);
     await this.page.mouse.down();

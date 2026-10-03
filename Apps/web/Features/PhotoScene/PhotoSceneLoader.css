@@ -1,0 +1,23 @@
+.photo-scene-button {
+  position: fixed;
+  left: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  padding: 8px 12px;
+  border: 1px solid var(--control-border);
+  border-radius: 8px;
+  background: var(--panel-background);
+  color: var(--panel-text);
+  font: inherit;
+}
+.photo-scene-status {
+  position: fixed;
+  left: 50%;
+  bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  max-width: calc(100vw - 24px);
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--panel-background);
+  color: var(--panel-text);
+  text-align: center;
+}

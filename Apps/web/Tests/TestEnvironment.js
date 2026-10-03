@@ -4,8 +4,12 @@ import { OffscreenFrameTarget } from './OffscreenFrameTarget.js';
 import { FrameTime, LONGEST_SIMULATION_STEP_SECONDS } from '../../../Shared/Domain/Entities/FrameTime.js';
 import { Logger } from '../../../Shared/Logging/Logger.js';
 import { SETTINGS_STORAGE_KEY } from '../../../Shared/Storage/Repositories/SettingsRepository.js';
+import { photoSceneFromPortrait } from '../../../Shared/Domain/UseCases/PhotoSceneFromPortrait.js';
+import { DepthEncoding, DEPTH_ENCODING_KINDS } from '../../../Shared/Domain/Entities/DepthEncoding.js';
 
 const FRAME_SECONDS = LONGEST_SIMULATION_STEP_SECONDS;
+const TEST_PHOTO = { width: 90, height: 160, colour: '#b03020' };
+const TEST_DEPTH = { width: 9, height: 16 };
 
 class SteppedClock {
   #seconds = 0;
@@ -94,6 +98,24 @@ export class TestEnvironment {
 
   async showNextScene() {
     await this.#graph.engine.nextSceneRequested();
+  }
+
+  async choosePhotoScene() {
+    const photoCanvas = new OffscreenCanvas(TEST_PHOTO.width, TEST_PHOTO.height);
+    const photoContext = photoCanvas.getContext('2d');
+    photoContext.fillStyle = TEST_PHOTO.colour;
+    photoContext.fillRect(0, 0, TEST_PHOTO.width, TEST_PHOTO.height);
+    const depthCodes = Uint8Array.from({ length: TEST_DEPTH.width * TEST_DEPTH.height }, (_, index) => Math.round((255 * Math.floor(index / TEST_DEPTH.width)) / (TEST_DEPTH.height - 1)));
+    return this.#graph.engine.photoSceneChosen(photoSceneFromPortrait({
+      photo: await photoCanvas.convertToBlob({ type: 'image/png' }),
+      photoWidth: TEST_PHOTO.width,
+      photoHeight: TEST_PHOTO.height,
+      exif: null,
+      depthCodes,
+      depthWidth: TEST_DEPTH.width,
+      depthHeight: TEST_DEPTH.height,
+      encoding: new DepthEncoding({ kind: DEPTH_ENCODING_KINDS.disparity, lowestCode: 0, highestCode: 255, lowestValue: 1, highestValue: 3 }),
+    }));
   }
 
   changeSetting(key, value) {

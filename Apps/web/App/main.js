@@ -4,6 +4,7 @@ import { FogScreen } from '../Features/Fog/FogScreen.js';
 import { AnimationFrameLoop } from '../Features/Fog/AnimationFrameLoop.js';
 import { SettingsPanel } from '../Features/Settings/SettingsPanel.js';
 import { PhotoProbePanel } from '../Features/PhotoProbe/PhotoProbePanel.js';
+import { PhotoSceneLoader } from '../Features/PhotoScene/PhotoSceneLoader.js';
 import { Logger } from '../../../Shared/Logging/Logger.js';
 
 const FRESH_FILES_WORKER_URL = new URL('../freshFilesWorker.js', import.meta.url);
@@ -29,6 +30,7 @@ async function start() {
     });
     new FogScreen({ canvas, message, engine: graph.engine, pointerWind: graph.pointerWind, clock: SYSTEM_CLOCK, logger: logger.forArea('screen') }).connect();
     new SettingsPanel({ settings: graph.settings, engine: graph.engine }).mount(document.body);
+    new PhotoSceneLoader({ engine: graph.engine, logger: logger.forArea('photo-scene') }).mount(document.body);
     await graph.engine.start();
     new AnimationFrameLoop((frameTime) => graph.engine.frameRequested(frameTime)).start();
   } catch (error) {
