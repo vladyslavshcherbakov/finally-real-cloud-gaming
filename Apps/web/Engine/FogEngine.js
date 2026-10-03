@@ -97,6 +97,7 @@ export class FogEngine {
 
   async photoSceneChosen(photoScene) {
     const previousPhotoScene = this.#photoScene;
+    this.#photoScene = photoScene;
     const isShown = await this.#showScene(photoScene.description);
     if (!isShown) this.#photoScene = previousPhotoScene;
     return isShown;
