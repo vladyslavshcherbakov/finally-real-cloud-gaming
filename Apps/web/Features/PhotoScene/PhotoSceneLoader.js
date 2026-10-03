@@ -57,7 +57,7 @@ export class PhotoSceneLoader {
   async #fileChosen(file) {
     this.#fileInput.value = '';
     if (file === undefined) {
-      this.#logger.info('photo not loaded: no file chosen');
+      this.#logger.info('[PHOTO-SCENE] photo not loaded: no file chosen');
       return;
     }
     this.#showStatus('Reading the depth of the photo…', { staysUntilReplaced: true });
@@ -65,23 +65,30 @@ export class PhotoSceneLoader {
     try {
       photoScene = await this.#photoScene(file);
     } catch (error) {
-      if (!isExpectedRefusal(error)) throw error;
-      this.#logger.info(`photo ${file.name} not loaded: ${error.message}`);
+      if (isExpectedRefusal(error)) {
+        this.#logger.info(`[PHOTO-SCENE] ${file.name} not loaded: ${error.message}`);
+      } else {
+        this.#logger.error(`[PHOTO-SCENE] ${file.name} not loaded by an unexpected ${error.name}: ${error.message}`);
+      }
       this.#showStatus(refusalMessage(error));
       return;
     }
     const isShown = await this.#engine.photoSceneChosen(photoScene);
-    this.#showStatus(isShown ? 'Photo loaded. It stays until the page reloads.' : 'The photo could not be shown. The scene stays.');
+    this.#logger.info(`[PHOTO-SCENE] ${file.name} ${isShown ? 'shown' : 'not shown by the engine'}`);
+    this.#showStatus(isShown ? 'Photo loaded. It stays until the page reloads.' : 'The photo could not be shown. The scene stays. (The engine did not load it.)');
   }
 
   async #photoScene(file) {
     const fileBytes = new Uint8Array(await file.arrayBuffer());
+    this.#logger.info(`[PHOTO-SCENE] ${file.name} read: type ${file.type || '(none)'}, ${fileBytes.length} bytes`);
     const report = photoFileReport(fileBytes);
     const depthMap = report.depthMaps[0];
     if (depthMap === undefined) throw new PhotoHasNoDepthMap(file.name);
+    this.#logger.info(`[PHOTO-SCENE] depth map found: item ${depthMap.itemId}, ${depthMap.auxiliaryType}, ${depthMap.width}×${depthMap.height}`);
     const encoding = depthEncoding(depthMap.describingXmp);
-    const photoBitmap = await decodedBitmap(file, 'photo');
-    const depthBitmap = await decodedBitmap(new Blob([auxiliaryImageFile(fileBytes, depthMap.itemId)], { type: 'image/heic' }), 'depth map');
+    this.#logger.info(`[PHOTO-SCENE] depth encoded as ${encoding.kind} ${encoding.lowestValue}–${encoding.highestValue} over codes ${encoding.lowestCode}–${encoding.highestCode}`);
+    const photoBitmap = await this.#decodedBitmap(file, 'photo');
+    const depthBitmap = await this.#decodedBitmap(new Blob([auxiliaryImageFile(fileBytes, depthMap.itemId)], { type: 'image/heic' }), 'depth map');
     const photoScene = photoSceneFromPortrait({
       photo: await shownPhoto(photoBitmap),
       photoWidth: photoBitmap.width,
@@ -92,11 +99,28 @@ export class PhotoSceneLoader {
       depthHeight: depthBitmap.height,
       encoding,
     });
-    this.#logger.info(`photo ${file.name}: ${photoBitmap.width}×${photoBitmap.height}, depth ${depthBitmap.width}×${depthBitmap.height} as ${encoding.kind}`
-      + ` ${encoding.lowestValue}–${encoding.highestValue}, vertical field of view ${photoScene.description.fovYDegrees.toFixed(1)}°`);
+    this.#logger.info(`[PHOTO-SCENE] scene built: photo ${photoBitmap.width}×${photoBitmap.height}, depth ${depthBitmap.width}×${depthBitmap.height},`
+      + ` vertical field of view ${photoScene.description.fovYDegrees.toFixed(1)}°`);
     photoBitmap.close();
     depthBitmap.close();
     return photoScene;
+  }
+
+  async #decodedBitmap(blob, imageName) {
+    try {
+      const bitmap = await createImageBitmap(blob, BITMAP_OPTIONS);
+      this.#logger.info(`[PHOTO-SCENE] ${imageName} decoded: ${bitmap.width}×${bitmap.height}`);
+      return bitmap;
+    } catch (optionsError) {
+      this.#logger.info(`[PHOTO-SCENE] ${imageName} not decoded without colour conversion (${optionsError.name}: ${optionsError.message}), decoding it plainly`);
+    }
+    try {
+      const bitmap = await createImageBitmap(blob);
+      this.#logger.info(`[PHOTO-SCENE] ${imageName} decoded plainly: ${bitmap.width}×${bitmap.height}`);
+      return bitmap;
+    } catch (plainError) {
+      throw new PhotoNotDecoded(imageName, plainError);
+    }
   }
 
   #showStatus(text, { staysUntilReplaced = false } = {}) {
@@ -113,16 +137,9 @@ function isExpectedRefusal(error) {
 
 function refusalMessage(error) {
   if (error instanceof PhotoHasNoDepthMap) return 'This photo has no depth map. The scene stays. Take it in Portrait mode on an iPhone.';
-  if (error instanceof PhotoNotDecoded) return `This browser cannot open the ${error.imageName}. The scene stays. Try Safari.`;
-  return `The depth of this photo cannot be read. The scene stays. (${error.message})`;
-}
-
-async function decodedBitmap(blob, imageName) {
-  try {
-    return await createImageBitmap(blob, BITMAP_OPTIONS);
-  } catch (decodeError) {
-    throw new PhotoNotDecoded(imageName, decodeError);
-  }
+  if (error instanceof PhotoNotDecoded) return `This browser cannot open the ${error.imageName}. The scene stays. Try Safari. (${error.message})`;
+  if (isExpectedRefusal(error)) return `The depth of this photo cannot be read. The scene stays. (${error.message})`;
+  return `The photo could not be loaded. The scene stays. (${error.name}: ${error.message})`;
 }
 
 async function shownPhoto(photoBitmap) {
