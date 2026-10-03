@@ -38,3 +38,13 @@
   color: var(--panel-text);
   font: inherit;
 }
+.photo-probe-thumbnails {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.photo-probe-thumbnails canvas {
+  max-width: 48%;
+  height: auto;
+  border-radius: 4px;
+}

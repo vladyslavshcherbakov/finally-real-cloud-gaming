@@ -1,12 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { photoFileReport, PhotoFileUnreadable } from '../../Storage/Mappers/PhotoFileMapper.js';
+import { photoFileReport, auxiliaryImageFile, PhotoFileUnreadable } from '../../Storage/Mappers/PhotoFileMapper.js';
 
 const TIFF_ASCII = 2;
 const TIFF_SHORT = 3;
 const TIFF_LONG = 4;
 const TIFF_RATIONAL = 5;
 const PORTRAIT_DEPTH_TYPE = 'urn:com:apple:photo:2018:aux:portraitdepth';
+const DEPTH_IMAGE_DATA = new Uint8Array([0x00, 0x00, 0x00, 0x05, 0x26, 0x01, 0xaf, 0x13, 0x80]);
+const DEPTH_XMP = '<x:xmpmeta><rdf:Description depthData:Float="16"/></x:xmpmeta>';
 const CAMERA_EXIF = [
   [
     { tag: 0x010f, type: TIFF_ASCII, value: 'Apple' },
@@ -58,6 +60,21 @@ test('photoFile_whenAJpegHoldsSeveralPicturesAndDepthXmp_reportsThem', () => {
   assert.deepEqual([report.multiPictureImageCount, report.doesXmpMentionDepth], [2, true]);
 });
 
+test('photoFile_whenXmpDescribesTheDepthImage_reportsThatXmpWithIt', () => {
+  const report = photoFileReport(heicBytes({ auxiliaryType: PORTRAIT_DEPTH_TYPE }));
+
+  assert.equal(report.depthMaps[0].describingXmp, DEPTH_XMP);
+});
+
+test('depthImageFile_ofAPortraitHeic_holdsTheDepthImageAsItsOnlyItem', () => {
+  const standaloneFile = auxiliaryImageFile(heicBytes({ auxiliaryType: PORTRAIT_DEPTH_TYPE }), 2);
+
+  const metaBoxes = childBoxes(standaloneFile, topBox(standaloneFile, 'meta').contentStart + 4);
+  const primaryItemId = (standaloneFile[metaBoxes.pitm.contentStart + 4] << 8) | standaloneFile[metaBoxes.pitm.contentStart + 5];
+  const mediaData = topBox(standaloneFile, 'mdat');
+  assert.deepEqual([primaryItemId, [...standaloneFile.subarray(mediaData.contentStart, mediaData.end)]], [2, [...DEPTH_IMAGE_DATA]]);
+});
+
 test('photoFile_whenABoxRunsPastTheEndOfTheFile_failsNamingWhere', () => {
   const wholeFile = heicBytes({ auxiliaryType: PORTRAIT_DEPTH_TYPE });
 
@@ -66,21 +83,45 @@ test('photoFile_whenABoxRunsPastTheEndOfTheFile_failsNamingWhere', () => {
 
 function heicBytes({ auxiliaryType }) {
   const exifItem = concat(u32(6), ascii('Exif\0\0'), tiffBytes(CAMERA_EXIF));
+  const xmpItem = ascii(DEPTH_XMP);
   const fileType = box('ftyp', ascii('heic'), u32(0), ascii('mif1'), ascii('heic'));
-  const metaWithExifAt = (exifOffset) => fullBox('meta', 0, 0,
+  const metaWithDataAt = (dataOffset) => fullBox('meta', 0, 0,
     fullBox('hdlr', 0, 0, u32(0), ascii('pict'), u32(0), u32(0), u32(0), ascii('\0')),
     fullBox('pitm', 0, 0, u16(1)),
-    fullBox('iinf', 0, 0, u16(3), itemInfo(1, 'hvc1'), itemInfo(2, 'hvc1'), itemInfo(3, 'Exif')),
-    fullBox('iref', 0, 0, ...(auxiliaryType === null ? [] : [box('auxl', u16(2), u16(1), u16(1))])),
+    fullBox('iinf', 0, 0, u16(4), itemInfo(1, 'hvc1'), itemInfo(2, 'hvc1'), itemInfo(3, 'Exif'), itemInfo(4, 'mime')),
+    fullBox('iref', 0, 0, ...(auxiliaryType === null ? [] : [box('auxl', u16(2), u16(1), u16(1)), box('cdsc', u16(4), u16(1), u16(2))])),
     box('iprp',
       box('ipco',
         fullBox('ispe', 0, 0, u32(4032), u32(3024)),
         fullBox('ispe', 0, 0, u32(768), u32(576)),
         fullBox('auxC', 0, 0, ascii(`${auxiliaryType ?? 'none'}\0`))),
       fullBox('ipma', 0, 0, u32(2), u16(1), u8(1), u8(1), u16(2), u8(2), u8(2), u8(3))),
-    fullBox('iloc', 0, 0, u8(0x44), u8(0x00), u16(1), u16(3), u16(0), u16(1), u32(exifOffset), u32(exifItem.length)));
-  const exifOffset = fileType.length + metaWithExifAt(0).length + 8;
-  return concat(fileType, metaWithExifAt(exifOffset), box('mdat', exifItem));
+    fullBox('iloc', 0, 0, u8(0x44), u8(0x00), u16(3),
+      u16(3), u16(0), u16(1), u32(dataOffset), u32(exifItem.length),
+      u16(2), u16(0), u16(1), u32(dataOffset + exifItem.length), u32(DEPTH_IMAGE_DATA.length),
+      u16(4), u16(0), u16(1), u32(dataOffset + exifItem.length + DEPTH_IMAGE_DATA.length), u32(xmpItem.length)));
+  const dataOffset = fileType.length + metaWithDataAt(0).length + 8;
+  return concat(fileType, metaWithDataAt(dataOffset), box('mdat', exifItem, DEPTH_IMAGE_DATA, xmpItem));
+}
+
+function topBox(bytes, type) {
+  return Object.values(childBoxesWithin(bytes, 0, bytes.length)).find((found) => found.type === type);
+}
+
+function childBoxes(bytes, start) {
+  const parentEnd = topBox(bytes, 'meta').end;
+  return childBoxesWithin(bytes, start, parentEnd);
+}
+
+function childBoxesWithin(bytes, start, end) {
+  const boxesByType = {};
+  for (let offset = start; offset + 8 <= end;) {
+    const size = (bytes[offset] << 24 >>> 0) + (bytes[offset + 1] << 16) + (bytes[offset + 2] << 8) + bytes[offset + 3];
+    const type = String.fromCharCode(...bytes.subarray(offset + 4, offset + 8));
+    boxesByType[type] = { type, contentStart: offset + 8, end: offset + size };
+    offset += size;
+  }
+  return boxesByType;
 }
 
 function jpegBytes({ multiPictureCount, xmp }) {

@@ -1,4 +1,6 @@
 const BYTES_PER_KILOBYTE = 1024;
+const XMP_FIELD_PATTERN = /([\w-]+:[\w-]+)="([^"]{1,60})"/g;
+const LARGEST_XMP_FIELD_COUNT = 20;
 
 export function photoProbeLines(file, report) {
   return [
@@ -33,4 +35,18 @@ function exifLines(exif) {
     `image: ${exif.pixelWidth ?? '?'}×${exif.pixelHeight ?? '?'}, orientation ${exif.orientation ?? '?'}`,
     `location: ${exif.hasGpsLocation ? 'in the file, not shown' : 'none'}`,
   ];
+}
+
+export function decodedDepthLines(width, height, { lowest, highest, mean }) {
+  return [`depth image decoded: ${width}×${height}, values ${lowest}–${highest} of 0–255, mean ${mean.toFixed(1)}`];
+}
+
+export function undecodedImageLines(imageName, error) {
+  return [`${imageName} not decoded: ${error.name}: ${error.message}`];
+}
+
+export function depthXmpLines(xmp) {
+  if (xmp === null) return ['depth XMP: none'];
+  const fields = [...xmp.matchAll(XMP_FIELD_PATTERN)].slice(0, LARGEST_XMP_FIELD_COUNT).map(([, name, value]) => `  ${name} = ${value}`);
+  return ['depth XMP:', ...(fields.length > 0 ? fields : [`  ${xmp.slice(0, 300)}`])];
 }

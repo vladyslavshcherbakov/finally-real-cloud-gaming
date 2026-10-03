@@ -15,11 +15,12 @@ export class PhotoExif {
 }
 
 export class AuxiliaryImage {
-  constructor({ itemId, auxiliaryType, width, height }) {
+  constructor({ itemId, auxiliaryType, width, height, describingXmp }) {
     this.itemId = itemId;
     this.auxiliaryType = auxiliaryType;
     this.width = width;
     this.height = height;
+    this.describingXmp = describingXmp;
   }
 
   get isDepthMap() {
