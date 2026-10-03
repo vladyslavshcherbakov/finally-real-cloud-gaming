@@ -1,9 +1,8 @@
-import { StableFluidsSolver } from './Solvers/StableFluidsSolver.js';
 import { FlipSolver } from './Solvers/FlipSolver.js';
 import { MlsMpmSolver } from './Solvers/MlsMpmSolver.js';
 import { CurlNoiseSolver } from './Solvers/CurlNoiseSolver.js';
 
-export const SOLVERS = [StableFluidsSolver, FlipSolver, MlsMpmSolver, CurlNoiseSolver];
+export const SOLVERS = [FlipSolver, MlsMpmSolver, CurlNoiseSolver];
 
 export const SOLVER_IDS = SOLVERS.map((solver) => solver.id);
 

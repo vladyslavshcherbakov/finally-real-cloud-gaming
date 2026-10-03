@@ -35,7 +35,7 @@ Add a setting in these steps:
 2. Add its slider, with its label and step, to `SLIDER_GROUPS` in `Apps/web/Features/Settings/SettingSliders.js`.
 3. Write it into the params in `SimulationParams.js` and read it in the shader through `params`.
 
-The reference solver is `Apps/web/Engine/Solvers/StableFluidsSolver.js`.
+The reference solver is `Apps/web/Engine/Solvers/CurlNoiseSolver.js`.
 
 ## Conventions
 

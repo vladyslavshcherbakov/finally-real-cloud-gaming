@@ -4,7 +4,7 @@ import { SettingsRepository, SettingsStorageUnavailable, SETTINGS_STORAGE_KEY } 
 import { StoredSettingsCorrupt } from '../../Storage/Mappers/SettingsMapper.js';
 import { defaultSettings } from '../../Domain/Entities/Settings.js';
 
-const solverIds = ['stable', 'flip'];
+const solverIds = ['curl', 'flip'];
 
 class InMemoryStorage {
   #itemsByKey = new Map();

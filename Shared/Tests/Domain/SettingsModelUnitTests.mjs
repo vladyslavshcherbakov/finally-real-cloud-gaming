@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { SettingsModel } from '../../Domain/Entities/SettingsModel.js';
 import { defaultSettings, SettingRefused } from '../../Domain/Entities/Settings.js';
 
-const solverIds = ['stable', 'flip'];
+const solverIds = ['curl', 'flip'];
 
 test('setting_whenChangedInsideItsRange_reachesEverySubscriber', () => {
   const settings = new SettingsModel(defaultSettings(solverIds), solverIds);
