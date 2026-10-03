@@ -1,5 +1,6 @@
 const BYTES_PER_KILOBYTE = 1024;
-const XMP_FIELD_PATTERN = /([\w-]+:[\w-]+)="([^"]{1,60})"/g;
+const XMP_FIELD_PATTERN = /<([\w-]+:[\w-]+)>([^<]{1,60})<\/\1>|\s([\w-]+:[\w-]+)="([^"]{1,60})"/g;
+const XMP_NAMESPACE_DECLARATION = /^xmlns:/;
 const LARGEST_XMP_FIELD_COUNT = 20;
 
 export function photoProbeLines(file, report) {
@@ -47,6 +48,10 @@ export function undecodedImageLines(imageName, error) {
 
 export function depthXmpLines(xmp) {
   if (xmp === null) return ['depth XMP: none'];
-  const fields = [...xmp.matchAll(XMP_FIELD_PATTERN)].slice(0, LARGEST_XMP_FIELD_COUNT).map(([, name, value]) => `  ${name} = ${value}`);
+  const fields = [...xmp.matchAll(XMP_FIELD_PATTERN)]
+    .map(([, elementName, elementValue, attributeName, attributeValue]) => ({ name: elementName ?? attributeName, value: elementValue ?? attributeValue }))
+    .filter((field) => !XMP_NAMESPACE_DECLARATION.test(field.name))
+    .slice(0, LARGEST_XMP_FIELD_COUNT)
+    .map((field) => `  ${field.name} = ${field.value}`);
   return ['depth XMP:', ...(fields.length > 0 ? fields : [`  ${xmp.slice(0, 300)}`])];
 }
